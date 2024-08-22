@@ -53,12 +53,15 @@ class SearchResultsPage extends StatelessWidget {
             return Center(child: CircularProgressIndicator());
           }
 
-          List<Product> products = snapshot.data!.docs
-              .map((doc) {
-                print('Product data: ${doc.data()}'); // Debugging
-                return Product.fromFirestore(doc);
-              })
-              .toList();
+          // Periksa jika snapshot memiliki data yang valid
+          List<Product> products = snapshot.data!.docs.map((doc) {
+            try {
+              return Product.fromFirestore(doc); // Tangani dan debug kesalahan di sini
+            } catch (e) {
+              print('Error creating Product: $e'); // Log kesalahan
+              return null; // Tangani kesalahan dengan baik
+            }
+          }).whereType<Product>().toList(); // Hilangkan nilai null
 
           List<Product> searchResults = _performSubstringSearch(query, products);
 
@@ -76,7 +79,6 @@ class SearchResultsPage extends StatelessWidget {
             ),
             itemCount: searchResults.length,
             itemBuilder: (context, index) {
-              
               return ProductCard(
                 product: searchResults[index],
               );

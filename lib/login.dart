@@ -2,6 +2,7 @@ import 'package:biumerch_mobile_app/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ForgotPasswordPage.dart';
 import 'VerificationPage.dart';
 
@@ -17,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  void _login() async {
+    void _login() async {
     String emailOrPhone = _emailOrPhoneController.text.trim();
     String password = _passwordController.text.trim();
 
@@ -27,6 +28,11 @@ class _LoginPageState extends State<LoginPage> {
           email: emailOrPhone,
           password: password,
         );
+
+        // Simpan status login
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -70,7 +76,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _signInWithGoogle() async {
+    void _signInWithGoogle() async {
     try {
       final GoogleUser = await _googleSignIn.signIn();
       if (GoogleUser != null) {
@@ -82,6 +88,10 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         await _auth.signInWithCredential(credential);
+
+        // Simpan status login
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
 
         Navigator.pushReplacement(
           context,

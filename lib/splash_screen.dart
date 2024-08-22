@@ -21,9 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(duration);  // Pause for the duration
     if (mounted) {  // Ensure widget is still in the tree
       bool isLoggedIn = await _checkLoginStatus();
-      bool isLoggedInWithoutValidation = await _checkLoginWithoutValidationStatus();
-      
-      if (isLoggedIn || isLoggedInWithoutValidation) {
+      if (isLoggedIn) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => LandingPage()),
         );
@@ -38,11 +36,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<bool> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getBool('isLoggedIn') ?? false;
-  }
-
-  Future<bool> _checkLoginWithoutValidationStatus() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('isLoggedInWithoutValidation') ?? false;
   }
 
   @override

@@ -24,12 +24,11 @@ class Product {
     return Product(
       title: data['name'] ?? '',
       description: data['description'] ?? '',
-      price: (data['price'] != null) ? (data['price'] is String ? double.tryParse(data['price']) ?? 0.0 : data['price'].toDouble()) : 0.0,
+      price: (data['price'] is String) ? double.tryParse(data['price']) ?? 0.0 : data['price'].toDouble(),
       image: (data['imageUrls'] as List<dynamic>).isNotEmpty ? data['imageUrls'][0] : '',
-      rating: (data['rating'] != null) ? (data['rating'] is String ? double.tryParse(data['rating']) ?? 0.0 : data['rating'].toDouble()) : 0.0,
+      rating: (data['rating'] is String) ? double.tryParse(data['rating']) ?? 0.0 : data['rating'].toDouble(),
     );
   }
-
 }
 
 class ProductCard extends StatelessWidget {
@@ -59,7 +58,8 @@ class ProductCard extends StatelessWidget {
         );
       },
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0), // Margin between cards
+        width: 220, // Slightly wider card
+        margin: EdgeInsets.all(7.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15.0),
           color: Colors.white,
@@ -67,52 +67,61 @@ class ProductCard extends StatelessWidget {
             BoxShadow(
               color: Colors.grey.withOpacity(0.5),
               spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(2, 2), // Shadow position
+              blurRadius: 3,
+              offset: Offset(0, 7),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(15.0),
-              child: Image.network(
-                product.image,
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
+            // Inner card for the image with reduced height
+            Card(
+              margin: EdgeInsets.all(8.0), // Remove default margin
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.0), // Inner card radius
+              ),
+              elevation: 5, // Elevation for the inner card
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10.0), // Image radius matches card radius
+                child: Image.network(
+                  product.image,
+                  height: 160, // Reduced height for a wider card
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     product.title,
                     style: TextStyle(
                       fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.bold, // Make the title bold
                     ),
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4.0),
+                  SizedBox(height: 4.0), // Reduce space between text widgets
                   Text(
                     formatter.format(product.price),
                     style: TextStyle(
                       fontSize: 14.0,
                       color: Colors.green[700],
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.bold, // Make the price bold
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 4.0),
+                  SizedBox(height: 4.0), // Reduce space between text and rating
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                     decoration: BoxDecoration(
-                      color: Color(0xFF319F43),
+                      color: Color(0xFF319F43), // Change background color of rating edge to #319F43
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: Row(

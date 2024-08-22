@@ -57,15 +57,19 @@ class _LandingPageState extends State<LandingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(100.0), // Height of the AppBar
+        preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.14), // 15% dari tinggi layar
         child: Padding(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top), // Add top padding here
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + MediaQuery.of(context).size.height * 0.00, // Padding atas yang dapat disesuaikan
+            // bottom: MediaQuery.of(context).size.height * 0., // Tambahkan sedikit padding bawah untuk menghindari pemotongan teks
+          ),
           child: AppBar(
             automaticallyImplyLeading: false,
             title: Padding(
-              padding: const EdgeInsets.only(left: 16.0, bottom: 10.0), // Mengatur padding kiri
+              padding: const EdgeInsets.only(left: 8.0), // Padding kiri untuk judul
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // Mengatur agar teks rata kiri
+                crossAxisAlignment: CrossAxisAlignment.start,
+                
                 children: [
                   Text(
                     'Halo,',
@@ -98,7 +102,7 @@ class _LandingPageState extends State<LandingPage> {
             ),
             actions: [
               Padding(
-                padding: const EdgeInsets.only(right: 16.0), // Add padding to align with the title
+                padding: const EdgeInsets.only(right: 16.0), // Padding kanan untuk ikon keranjang
                 child: IconButton(
                   onPressed: () {
                     Navigator.push(
@@ -110,7 +114,7 @@ class _LandingPageState extends State<LandingPage> {
                 ),
               ),
             ],
-            backgroundColor: Colors.white,
+            // backgroundColor: Colors.white,
             elevation: 0, // Remove shadow
           ),
         ),
@@ -279,13 +283,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _startAutoSlide() {
-    _timer = Timer.periodic(Duration(seconds: 5), (Timer timer) {
+    _timer = Timer.periodic(Duration(seconds: 8), (Timer timer) {
       if (_pageController.hasClients) {
         int currentPage = _pageController.page?.toInt() ?? 0;
         int nextPage = (currentPage + 1) % _totalBanners;
         _pageController.animateToPage(
           nextPage,
-          duration: Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 1000),
           curve: Curves.easeInOut,
         );
       }
