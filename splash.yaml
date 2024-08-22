@@ -1,0 +1,10 @@
+flutter_native_splash:
+  color: "#ffffff" # Atur warna latar belakang atau hapus jika menggunakan background_image
+  background_image: assets/images/background.jpg
+  image: assets/logos/biumerch.png
+  
+  android_12:
+    image: assets/logos/biumerch.png
+    icon_background_color: "#ffffff"
+    
+web: false
