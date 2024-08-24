@@ -18,44 +18,53 @@ class _RegisterPageState extends State<RegisterPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
 
-  void _register() async {
+    void _register() async {
     if (_formKey.currentState!.validate()) {
       if (_passwordController.text == _confirmPasswordController.text) {
         try {
-          UserCredential userCredential =
-              await _auth.createUserWithEmailAndPassword(
+          UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
             email: _emailController.text,
             password: _passwordController.text,
           );
 
           if (userCredential.user != null) {
-            // Debug print
+            // Debug print to ensure user is created
             print("User created with UID: ${userCredential.user!.uid}");
 
             // Menyimpan data pengguna ke Firestore
-            await _firestore
-                .collection('users')
-                .doc(userCredential.user!.uid)
-                .set({
+            await _firestore.collection('users').doc(userCredential.user!.uid).set({
               'email': _emailController.text,
-              'phone':
-                  _phoneController.text, // Simpan nomor telepon ke Firestore
+              'phone': _phoneController.text, // Simpan nomor telepon ke Firestore
               'username': _usernameController.text,
               'createdAt': FieldValue.serverTimestamp(),
             });
 
-            print("Data user saved to Firestore");
+            // Example data for the clicked_products collection
+            String productId = 'exampleProductId';
+            String category = 'exampleCategory';
+            int initialCount = 1;
+
+            // Debug print before writing to clicked_products
+            print("Creating clicked_products collection for user ${userCredential.user!.uid}");
+
+            await _firestore.collection('users').doc(userCredential.user!.uid)
+                .collection('clicked_products').doc(productId).set({
+              'category': category,
+              'timestamp': FieldValue.serverTimestamp(),
+              'count': initialCount,
+            });
+
+            // Debug print after writing to clicked_products
+            print("clicked_products collection created for product ID: $productId");
 
             // Mengirim email verifikasi
             await userCredential.user!.sendEmailVerification();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                    'A verification email has been sent. Please check your inbox.'),
+                content: Text('A verification email has been sent. Please check your inbox.'),
               ),
             );
-            Navigator.pushReplacementNamed(
-                context, '/login'); // Ganti dengan rute yang sesuai
+            Navigator.pushReplacementNamed(context, '/login'); // Ganti dengan rute yang sesuai
           }
         } on FirebaseAuthException catch (e) {
           print("FirebaseAuthException: ${e.code}");

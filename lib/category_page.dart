@@ -140,22 +140,38 @@ class CategoryPage extends StatelessWidget {
           showSelectedLabels: true,
           showUnselectedLabels: true,
           onTap: (index) {
-            Navigator.pushReplacement(
+             Widget page;
+
+              switch (index) {
+                case 0:
+                  page = LandingPage();
+                  break;
+                case 1:
+                  page = CategoryPage();
+                  break;
+                case 2:
+                  page = HistoryPage();
+                  break;
+                case 3:
+                  page = ProfilePage();
+                  break;
+                default:
+                  return;
+              }
+             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) {
-                switch (index) {
-                  case 0:
-                    return LandingPage();
-                  case 1:
-                    return CategoryPage();
-                  case 2:
-                    return HistoryPage();
-                  case 3:
-                    return ProfilePage();
-                  default:
-                    return LandingPage();
-                }
-              }),
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => page,
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  final opacityAnimation = animation.drive(
+                    CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+                  ).drive(
+                    Tween<double>(begin: 0.0, end: 1.0),
+                  );
+                  return FadeTransition(opacity: opacityAnimation, child: child);
+                },
+                transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+              ),
             );
           },
         ),
@@ -229,10 +245,20 @@ class CategoryPage extends StatelessWidget {
       default:
         page = LandingPage();
     }
-
-    Navigator.push(
+    Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => page),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final opacityAnimation = animation.drive(
+            CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+          ).drive(
+            Tween<double>(begin: 0.0, end: 1.0),
+          );
+          return FadeTransition(opacity: opacityAnimation, child: child);
+        },
+        transitionDuration: Duration(milliseconds: 700), // Durasi transisi yang lebih panjang
+      ),
     );
   }
 }

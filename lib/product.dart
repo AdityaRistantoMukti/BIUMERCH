@@ -1,3 +1,5 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:biumerch_mobile_app/food_detail_page.dart';
@@ -9,6 +11,9 @@ class Product {
   final double price;
   final String image;
   final double rating;
+  final String id;  // Tambahkan field id
+  final String category;  // Tambahkan field category
+  
 
   Product({
     required this.title,
@@ -16,20 +21,36 @@ class Product {
     required this.price,
     required this.image,
     required this.rating,
+    required this.id,  // Tambahkan field id
+    required this.category,  // Tambahkan field category
   });
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
+    // Handle the possibility of missing or incorrect data
     return Product(
-      title: data['name'] ?? '',
+      title: data['name'] ?? '', // Provide a default empty string if the title is missing
       description: data['description'] ?? '',
-      price: (data['price'] is String) ? double.tryParse(data['price']) ?? 0.0 : data['price'].toDouble(),
-      image: (data['imageUrls'] as List<dynamic>).isNotEmpty ? data['imageUrls'][0] : '',
-      rating: (data['rating'] is String) ? double.tryParse(data['rating']) ?? 0.0 : data['rating'].toDouble(),
+      price: _parseDouble(data['price']) ?? 0.0, // Use helper function to parse price safely
+      image: (data['imageUrls'] is List && (data['imageUrls'] as List).isNotEmpty) 
+             ? data['imageUrls'][0] 
+             : '', // Provide a default empty string if the image URL is missing
+      rating: _parseDouble(data['rating']) ?? 0.0, // Use helper function to parse rating safely
+      category: data['category'] ?? '',  // Set category dari data Firestore
+      id: doc.id,  // Set id dari Firestore document id
     );
   }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
 }
+
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -38,12 +59,51 @@ class ProductCard extends StatelessWidget {
     required this.product,
   });
 
+  // SEO 
+    void _trackProductClick(String productId, String category) async {
+    await FirebaseAnalytics.instance.logEvent(
+      name: 'product_click',
+      parameters: {
+        'product_id': productId,
+        'category': category,
+      },
+    );
+  }
+
+    void _saveProductClickToFirestore(String productId, String category) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentReference userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      DocumentReference productDoc = userDoc.collection('clicked_products').doc(productId);
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentSnapshot snapshot = await transaction.get(productDoc);
+
+        if (!snapshot.exists) {
+          transaction.set(productDoc, {
+            'category': category,
+            'timestamp': FieldValue.serverTimestamp(),
+            'count': 1,
+          });
+        } else {
+          transaction.update(productDoc, {
+            'count': FieldValue.increment(1),
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        }
+      });
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return GestureDetector(
       onTap: () {
+         _trackProductClick(product.id, product.category);
+         _saveProductClickToFirestore(product.id, product.category);
         Navigator.push(
           context,
           MaterialPageRoute(

@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ForgotPasswordPage.dart';
 import 'VerificationPage.dart';
 
 final GoogleSignIn _googleSignIn = GoogleSignIn();
 final FirebaseAuth _auth = FirebaseAuth.instance;
+final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
 class LoginPage extends StatefulWidget {
   @override
@@ -18,7 +20,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
-    void _login() async {
+  void _login() async {
     String emailOrPhone = _emailOrPhoneController.text.trim();
     String password = _passwordController.text.trim();
 
@@ -29,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
           password: password,
         );
 
-        // Simpan status login
+        // Save login status
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
 
@@ -41,11 +43,11 @@ class _LoginPageState extends State<LoginPage> {
         );
       } on FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login gagal: ${e.message}')),
+          SnackBar(content: Text('Login failed: ${e.message}')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login gagal: ${e.toString()}')),
+          SnackBar(content: Text('Login failed: ${e.toString()}')),
         );
       }
     } else {
@@ -67,50 +69,86 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login gagal: ${e.message}')),
+        SnackBar(content: Text('Login failed: ${e.message}')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login gagal: ${e.toString()}')),
+        SnackBar(content: Text('Login failed: ${e.toString()}')),
       );
     }
   }
 
-    void _signInWithGoogle() async {
+  Future<void> _signInWithGoogle() async {
     try {
-      final GoogleUser = await _googleSignIn.signIn();
-      if (GoogleUser != null) {
-        final GoogleAuth = await GoogleUser.authentication;
-
-        final credential = GoogleAuthProvider.credential(
-          accessToken: GoogleAuth.accessToken,
-          idToken: GoogleAuth.idToken,
+      // Attempt to sign in with Google
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google Sign-In was cancelled')),
         );
+        return;
+      }
 
-        await _auth.signInWithCredential(credential);
+      // Authenticate with Firebase
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-        // Simpan status login
+      // Sign in to Firebase with the Google [UserCredential]
+      final userCredential = await _auth.signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        // Check if user is new
+        final DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+          // If the user is new, save their information to Firestore
+          await _firestore.collection('users').doc(user.uid).set({
+            'email': user.email,
+            'username': user.displayName ?? 'Anonymous',
+            'createdAt': FieldValue.serverTimestamp(),
+            'balance': 0, // Set initial balance to 0
+            'idUser': user.uid, // Set idUser to the same as the document ID
+            'phoneNumber': '', // Set phoneNumber to empty string
+            'profilePicture': '', // Set profilePicture to empty string
+          });
+
+          // Create the clicked_products sub-collection
+          String productId = 'exampleProductId';
+          String category = 'exampleCategory';
+          int initialCount = 1;
+
+          await _firestore.collection('users').doc(user.uid)
+              .collection('clicked_products').doc(productId).set({
+            'category': category,
+            'timestamp': FieldValue.serverTimestamp(),
+            'count': initialCount,
+          });
+
+          print("User and clicked_products collection created for user ${user.uid}");
+        }
+
+        // Save login status
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
 
+        // Navigate to landing page
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => LandingPage(),
           ),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign-In dibatalkan')),
-        );
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In gagal: ${e.message}')),
+        SnackBar(content: Text('Google Sign-In failed: ${e.message}')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In gagal: ${e.toString()}')),
+        SnackBar(content: Text('Google Sign-In failed: ${e.toString()}')),
       );
     }
   }
@@ -145,7 +183,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    SizedBox(height: 323.0), // Jarak vertikal dari atas layar
+                    SizedBox(height: 323.0), // Vertical spacing
                     Text(
                       'Hai, Selamat \nDatang Kembali!',
                       style: TextStyle(
@@ -157,7 +195,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 20.0), // Jarak vertikal antara teks
+                    SizedBox(height: 20.0), // Vertical spacing
                     Text(
                       'Masuk ke akunmu yuk!',
                       style: TextStyle(
@@ -167,8 +205,7 @@ class _LoginPageState extends State<LoginPage> {
                         color: Color(0xFF5F5F5F),
                       ),
                     ),
-                    SizedBox(
-                        height: 20.0), // Jarak vertikal antara teks dan input
+                    SizedBox(height: 20.0), // Vertical spacing
                     TextField(
                       controller: _emailOrPhoneController,
                       decoration: InputDecoration(

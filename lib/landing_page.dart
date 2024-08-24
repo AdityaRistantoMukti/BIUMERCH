@@ -1,4 +1,3 @@
-  import 'package:biumerch_mobile_app/food_detail_page.dart';
   import 'package:biumerch_mobile_app/halaman_keranjang.dart';
   import 'package:biumerch_mobile_app/history_page.dart';
   import 'package:biumerch_mobile_app/jasa_page.dart';  
@@ -12,12 +11,12 @@
   import 'package:firebase_auth/firebase_auth.dart';
   import 'package:flutter/material.dart';
   import 'package:flutter_svg/flutter_svg.dart';
-import 'package:shimmer/shimmer.dart';
+  import 'package:shimmer/shimmer.dart';
   import 'dart:async';
   import 'package:smooth_page_indicator/smooth_page_indicator.dart'; // Import paket
   import 'banner_model.dart';
   import 'banner_service.dart';
-  import 'package:intl/intl.dart';
+  
 
   void main() {
     runApp(MyApp());
@@ -57,19 +56,20 @@ class _LandingPageState extends State<LandingPage> {
 
   // Function 
   Future<String?> _fetchUsername() async {
-  User? user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    // Cek apakah user login dengan Google
-    if (user.displayName != null && user.displayName!.isNotEmpty) {
-      return user.displayName; // Mengembalikan nama dari akun Google
-    } else {
-      // Jika tidak ada displayName, ambil dari Firestore (untuk user yang mendaftar dengan email/telepon)
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      return userDoc['username'];
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Cek apakah user login dengan Google
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        return user.displayName; // Mengembalikan nama dari akun Google
+      } else {
+        // Jika tidak ada displayName, ambil dari Firestore (untuk user yang mendaftar dengan email/telepon)
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        return userDoc['username'];
+      }
     }
+    return null;
   }
-  return null;
-}
+
 
 
 // Widget
@@ -192,36 +192,43 @@ class _LandingPageState extends State<LandingPage> {
 
  
 
-  void _onItemTapped(int index) {
+    void _onItemTapped(int index) {
+    Widget page;
+
     switch (index) {
       case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LandingPage()),
-        );
+        page = LandingPage();
         break;
       case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => CategoryPage()),
-        );
+        page = CategoryPage();
         break;
       case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HistoryPage()),
-        );
+        page = HistoryPage();
         break;
       case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
-        );
+        page = ProfilePage();
         break;
       default:
-        break;
+        return;
     }
+
+     Navigator.pushReplacement(
+    context,
+    PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final opacityAnimation = animation.drive(
+          CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+        ).drive(
+          Tween<double>(begin: 0.0, end: 1.0),
+        );
+        return FadeTransition(opacity: opacityAnimation, child: child);
+      },
+      transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+    ),
+  );
   }
+
 }
 
 
@@ -234,7 +241,8 @@ class _HomePageState extends State<HomePage> {
   final PageController _pageController = PageController();
   late Timer _timer;
   late Future<List<BannerModel>> _bannersFuture; 
-  late Future<List<Product>> _productsFuture;    
+  late Future<List<Product>> _productsFuture;  
+  
   String _searchQuery = '';
   int _totalBanners = 0;
 
@@ -255,12 +263,18 @@ class _HomePageState extends State<HomePage> {
   Future<List<Product>> fetchProducts() async {
     // Implementasikan pengambilan produk dari backend atau Firestore
     // Misalnya:
-    final List<Product> products = await FirebaseFirestore.instance.collection('products')
-      .where('rating', isEqualTo: '4.5').get().then((snapshot) {
-      return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
-    });
-    return products; // Sementara, kembalikan list kosong
+      try {
+      final List<Product> products = await FirebaseFirestore.instance.collection('products')
+        .where('rating', isEqualTo: '4.5').get().then((snapshot) {
+        return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
+      });
+      return products;
+    } catch (e) {
+      print('Error fetching products: $e');
+      return [];
+    }
   }
+  
 
   // SEO
   Future<List<Product>> fetchTrendingProducts() async {
@@ -282,6 +296,33 @@ class _HomePageState extends State<HomePage> {
     return trendingProducts;
   }
 
+  Future<List<Product>> _getRecommendedProducts() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      QuerySnapshot clickedProductsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('clicked_products')
+          .orderBy('count', descending: true)
+          .limit(10)
+          .get();
+
+      List<Product> recommendedProducts = [];
+      for (var doc in clickedProductsSnapshot.docs) {
+        String category = doc['category'];
+        QuerySnapshot productsSnapshot = await FirebaseFirestore.instance
+            .collection('products')
+            .where('category', isEqualTo: category)
+            .limit(5)
+            .get();
+        recommendedProducts.addAll(productsSnapshot.docs.map((doc) => Product.fromFirestore(doc)));
+      }
+      return recommendedProducts;
+    } else {
+      return [];
+    }
+  }
+  
   @override
   void dispose() {
     _timer.cancel();
@@ -530,7 +571,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   SizedBox(height: 10.0),
                   FutureBuilder<List<Product>>(
-                    future: _productsFuture,
+                    future: _getRecommendedProducts(),  // Pastikan ini memanggil metode bukan variabel
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return Center(child: CircularProgressIndicator());

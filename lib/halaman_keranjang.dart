@@ -14,41 +14,40 @@ class _HalamanKeranjangState extends State<HalamanKeranjang> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    Widget page;
 
     switch (index) {
       case 0:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => LandingPage()),
-        );
+        page = LandingPage();
         break;
       case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => CategoryPage()),
-        );
+        page = CategoryPage();
         break;
       case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => HistoryPage()),
-        );
+        page = HistoryPage();
         break;
       case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
-        );
+        page = ProfilePage();
         break;
       default:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => LandingPage()),
-        );
+        return;
     }
+
+     Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final opacityAnimation = animation.drive(
+            CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+          ).drive(
+            Tween<double>(begin: 0.0, end: 1.0),
+          );
+          return FadeTransition(opacity: opacityAnimation, child: child);
+        },
+        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+      ),
+    );
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:biumerch_mobile_app/category_page.dart';
 import 'package:biumerch_mobile_app/history_page.dart';
 import 'package:biumerch_mobile_app/landing_page.dart';
+import 'package:biumerch_mobile_app/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -14,51 +15,57 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   int _selectedIndex = 3;
 
-  Future<void> _logout() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.remove('isLoggedIn');
-  await prefs.remove('isLoggedInWithoutValidation'); // Jika ada validasi lain
-  await FirebaseAuth.instance.signOut(); // Tambahkan ini untuk mengeluarkan pengguna dari Firebase
-  Navigator.pushReplacementNamed(context, '/login');
-}
+    Future<void> _logout() async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('isLoggedIn');
+      await prefs.remove('isLoggedInWithoutValidation'); // Jika ada validasi lain
+      await FirebaseAuth.instance.signOut(); // Tambahkan ini untuk mengeluarkan pengguna dari Firebase
+
+      // Menggunakan pushAndRemoveUntil untuk memastikan pengguna tidak dapat kembali ke halaman sebelumnya
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()), // Pastikan ini adalah halaman login Anda
+        (Route<dynamic> route) => false,
+      );
+    }
+
 
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    Widget page;
 
     switch (index) {
       case 0:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => LandingPage()),
-        );
+        page = LandingPage();
         break;
       case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => CategoryPage()),
-        );
+        page = CategoryPage();
         break;
       case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => HistoryPage()),
-        );
+        page = HistoryPage();
         break;
       case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
-        );
+        page = ProfilePage();
         break;
       default:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => LandingPage()),
-        );
+        return;
     }
+
+     Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final opacityAnimation = animation.drive(
+            CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+          ).drive(
+            Tween<double>(begin: 0.0, end: 1.0),
+          );
+          return FadeTransition(opacity: opacityAnimation, child: child);
+        },
+        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+      ),
+    );
   }
 
   @override

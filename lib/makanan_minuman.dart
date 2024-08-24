@@ -91,15 +91,21 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
         page = LandingPage();
     }
 
-    Navigator.push(
+    Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => page),
-    ).then((_) {
-      // Mengembalikan ke halaman utama (HalamanMakananMinuman) setelah kembali
-      setState(() {
-        _selectedIndex = index;
-      });
-    });
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final opacityAnimation = animation.drive(
+            CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+          ).drive(
+            Tween<double>(begin: 0.0, end: 1.0),
+          );
+          return FadeTransition(opacity: opacityAnimation, child: child);
+        },
+        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+      ),
+    );
   }
 
   void _filterProducts(String query) {
