@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "930011368188",
+    "firebase_url": "https://simirpl22a-biumerch-51620-default-rtdb.firebaseio.com",
     "project_id": "simirpl22a-biumerch-51620",
     "storage_bucket": "simirpl22a-biumerch-51620.appspot.com"
   },
@@ -13,6 +14,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "930011368188-lqgbjf38sfq5t72o3hlfesv7k72ruq9t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.apa",
+            "certificate_hash": "4f9887c321d1c84a060c189707aeb6a00412b8a7"
+          }
+        },
         {
           "client_id": "930011368188-c2s1oeqljg8k5r5f961iebjs9g9d4e2a.apps.googleusercontent.com",
           "client_type": 3

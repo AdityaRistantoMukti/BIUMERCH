@@ -76,9 +76,9 @@ class _SearchPageState extends State<SearchPage> {
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.only(top: 13.0),  // Add custom padding if needed
+              padding: EdgeInsets.only(top: 13.0, left: 8.0),  // Add custom padding if needed
               child: AppBar(
-                leadingWidth: 25,
+                leadingWidth: 20,
                 leading: IconButton(
                   icon: Icon(Icons.arrow_back),
                   onPressed: () {

@@ -12,6 +12,7 @@
   import 'package:firebase_auth/firebase_auth.dart';
   import 'package:flutter/material.dart';
   import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shimmer/shimmer.dart';
   import 'dart:async';
   import 'package:smooth_page_indicator/smooth_page_indicator.dart'; // Import paket
   import 'banner_model.dart';
@@ -43,6 +44,7 @@ class LandingPage extends StatefulWidget {
 }
 
 class _LandingPageState extends State<LandingPage> {
+  // Variable
   int _selectedIndex = 0;
 
   final List<Widget> _widgetOptions = <Widget>[
@@ -53,72 +55,84 @@ class _LandingPageState extends State<LandingPage> {
     HalamanMakananMinuman(), // Halaman Makanan & Minuman
   ];
 
+  // Function 
+  Future<String?> _fetchUsername() async {
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    // Cek apakah user login dengan Google
+    if (user.displayName != null && user.displayName!.isNotEmpty) {
+      return user.displayName; // Mengembalikan nama dari akun Google
+    } else {
+      // Jika tidak ada displayName, ambil dari Firestore (untuk user yang mendaftar dengan email/telepon)
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      return userDoc['username'];
+    }
+  }
+  return null;
+}
+
+
+// Widget
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.14), // 15% dari tinggi layar
-        child: Padding(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + MediaQuery.of(context).size.height * 0.00, // Padding atas yang dapat disesuaikan
-            // bottom: MediaQuery.of(context).size.height * 0., // Tambahkan sedikit padding bawah untuk menghindari pemotongan teks
-          ),
-          child: AppBar(
-            automaticallyImplyLeading: false,
-            title: Padding(
-              padding: const EdgeInsets.only(left: 8.0), // Padding kiri untuk judul
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                
-                children: [
-                  Text(
-                    'Halo,',
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  FutureBuilder<String?>(
-                    future: _fetchUsername(), // Fungsi untuk mengambil username dari Firestore
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Container(); // Tidak menampilkan apapun saat loading
-                      } else if (snapshot.hasError) {
-                        return Text("Error"); // Menangani error jika ada
-                      } else {
-                        return Text(
-                          snapshot.data ?? "", // Tampilkan username jika sudah siap
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.bold,
-                            color: const Color.fromRGBO(76, 175, 80, 1),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0), // Padding kanan untuk ikon keranjang
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => HalamanKeranjang()),
-                    );
-                  },
-                  icon: Icon(Icons.shopping_cart_outlined, size: 40.0), // Perbesar ikon keranjang menjadi 40.0
-                ),
-              ),
-            ],
-            // backgroundColor: Colors.white,
-            elevation: 0, // Remove shadow
+      appBar: AppBar(
+  automaticallyImplyLeading: false,
+  toolbarHeight: MediaQuery.of(context).size.height * 0.14, // Atur tinggi toolbar secara langsung
+  elevation: 0, // Hilangkan bayangan
+  title: Padding(
+    padding: EdgeInsets.only(
+      // top: MediaQuery.of(context).padding.top + MediaQuery.of(context).size.height * 0.00,
+      left: 8.0,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Halo,',
+          style: TextStyle(
+            fontSize: 24.0,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        FutureBuilder<String?>(
+          future: _fetchUsername(), // Fungsi untuk mengambil username dari Firestore
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Container(); // Tidak menampilkan apapun saat loading
+            } else if (snapshot.hasError) {
+              return Text(""); // Menangani error jika ada
+            } else {
+              return Text(
+                snapshot.data ?? "", // Tampilkan username jika sudah siap
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                  color: const Color.fromRGBO(76, 175, 80, 1),
+                ),
+              );
+            }
+          },
+        ),
+      ],
+    ),
+  ),
+  actions: [
+    Padding(
+      padding: const EdgeInsets.only(right: 16.0), // Padding kanan untuk ikon keranjang
+      child: IconButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HalamanKeranjang()),
+          );
+        },
+        icon: Icon(Icons.shopping_cart_outlined, size: 40.0), // Perbesar ikon keranjang menjadi 40.0
       ),
+    ),
+  ],
+),
+
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
       ),
@@ -176,14 +190,7 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  Future<String?> _fetchUsername() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      return userDoc['username'];
-    }
-    return null;
-  }
+ 
 
   void _onItemTapped(int index) {
     switch (index) {
@@ -342,64 +349,113 @@ class _HomePageState extends State<HomePage> {
             ),
             // Banner
             SizedBox(height: 16),
-            FutureBuilder<List<BannerModel>>(
-              future: _bannersFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('No banners available'));
-                } else {
-                  List<BannerModel> banners = snapshot.data!;
-                  return Container(
-                    height: 200.0,
+              FutureBuilder<List<BannerModel>>(
+  future: _bannersFuture,
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      // Tampilkan Shimmer untuk seluruh PageView jika semua data belum selesai dimuat
+      return Container(
+        height: 200.0,
+        margin: EdgeInsets.all(16.0),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15.0),
+              color: Colors.grey[300],
+            ),
+          ),
+        ),
+      );
+    } else if (snapshot.hasError) {
+      return Center(child: Text('Error: ${snapshot.error}'));
+    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      return Center(child: Text('No banners available'));
+    } else {
+      List<BannerModel> banners = snapshot.data!;
+      return Container(
+        height: 200.0,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: banners.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: EdgeInsets.all(16.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15.0),
                     child: Stack(
                       children: [
-                        PageView.builder(
-                          controller: _pageController,
-                          itemCount: banners.length,
-                          itemBuilder: (context, index) {
-                            return Container(
-                              margin: EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(15.0),
-                                image: DecorationImage(
-                                  image: NetworkImage(banners[index].imageUrl),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            );
-                          },
-                          onPageChanged: (index) {
-                            setState(() {});
-                          },
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: SmoothPageIndicator(
-                              controller: _pageController,
-                              count: banners.length,
-                              effect: WormEffect(
-                                activeDotColor: Colors.green,
-                                dotColor: Colors.grey,
-                                dotHeight: 8.0,
-                                dotWidth: 8.0,
-                                spacing: 16.0,
-                              ),
-                            ),
+                        Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Container(
+                            color: Colors.grey[300],
+                            height: 200.0,
+                            width: double.infinity,
                           ),
+                        ),
+                        Image.network(
+                          banners[index].imageUrl,
+                          fit: BoxFit.cover,
+                          height: 200.0,
+                          width: double.infinity,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              return child; // Gambar selesai dimuat
+                            } else {
+                              return Shimmer.fromColors(
+                                baseColor: Colors.grey[300]!,
+                                highlightColor: Colors.grey[100]!,
+                                child: Container(
+                                  color: Colors.grey[300],
+                                  height: 200.0,
+                                  width: double.infinity,
+                                ),
+                              );
+                            }
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(child: Text('Error loading banner'));
+                          },
                         ),
                       ],
                     ),
-                  );
-                }
+                  ),
+                );
+              },
+              onPageChanged: (index) {
+                setState(() {});
               },
             ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SmoothPageIndicator(
+                  controller: _pageController,
+                  count: banners.length,
+                  effect: WormEffect(
+                    activeDotColor: Colors.green,
+                    dotColor: Colors.grey,
+                    dotHeight: 8.0,
+                    dotWidth: 8.0,
+                    spacing: 16.0,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  },
+),
+
+
             // End Banner
             Padding(
               padding: const EdgeInsets.all(16.0),

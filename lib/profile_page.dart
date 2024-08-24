@@ -1,6 +1,7 @@
 import 'package:biumerch_mobile_app/category_page.dart';
 import 'package:biumerch_mobile_app/history_page.dart';
 import 'package:biumerch_mobile_app/landing_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,11 +15,13 @@ class _ProfilePageState extends State<ProfilePage> {
   int _selectedIndex = 3;
 
   Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('isLoggedIn');
-    await prefs.remove('isLoggedInWithoutValidation');
-    Navigator.pushReplacementNamed(context, '/login');
-  }
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.remove('isLoggedIn');
+  await prefs.remove('isLoggedInWithoutValidation'); // Jika ada validasi lain
+  await FirebaseAuth.instance.signOut(); // Tambahkan ini untuk mengeluarkan pengguna dari Firebase
+  Navigator.pushReplacementNamed(context, '/login');
+}
+
 
   void _onItemTapped(int index) {
     setState(() {
