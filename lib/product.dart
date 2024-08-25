@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/category_page.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ class Product {
   final double rating;
   final String id;  // Tambahkan field id
   final String category;  // Tambahkan field category
-  
+  final String storeId; // Tambahkan Store ID
 
   Product({
     required this.title,
@@ -23,6 +24,7 @@ class Product {
     required this.rating,
     required this.id,  // Tambahkan field id
     required this.category,  // Tambahkan field category
+    required this.storeId // Tambahkan Store ID
   });
 
   factory Product.fromFirestore(DocumentSnapshot doc) {
@@ -38,6 +40,7 @@ class Product {
              : '', // Provide a default empty string if the image URL is missing
       rating: _parseDouble(data['rating']) ?? 0.0, // Use helper function to parse rating safely
       category: data['category'] ?? '',  // Set category dari data Firestore
+      storeId: data['storeId'] ?? '', // Ambil Store ID dari Firestore
       id: doc.id,  // Set id dari Firestore document id
     );
   }
@@ -112,7 +115,9 @@ class ProductCard extends StatelessWidget {
               title: product.title,
               price: product.price,
               rating: product.rating,
-              description: product.description,
+              description: product.description,              
+              category: product.category,
+              storeId: product.storeId,
             ),
           ),
         );

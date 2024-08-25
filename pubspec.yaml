@@ -14,6 +14,7 @@ dependencies:
   cloud_firestore: ^5.1.0
   connectivity_plus: ^5.0.2
   cupertino_icons: ^1.0.6
+  file_picker: ^5.2.2
   firebase_analytics: ^11.2.1
   firebase_auth: ^5.1.4
   firebase_core: ^3.2.0
@@ -24,11 +25,18 @@ dependencies:
   fuzzy: ^0.5.1
   get: ^4.6.6
   google_sign_in: ^6.1.0
+  http: ^1.2.2
   iconsax: ^0.0.8
+  image_picker: ^0.8.4+8
   intl: ^0.19.0
+  mailer: ^6.1.2
+  path: ^1.8.3
+  permission_handler: ^10.2.0
   shared_preferences: ^2.3.2
   shimmer: ^3.0.0
   smooth_page_indicator: ^1.2.0+3
+  sqflite: ^2.0.0+4
+  url_launcher: ^6.0.2
 
 # -----------------./ PACKAGES END---------------------#
 dev_dependencies:
@@ -59,6 +67,17 @@ flutter:
     - assets/images/img_binder_a5.png
     - assets/images/img_ayam_geprek_1.png
     - assets/images/img_resep_chicken_katsu.png
+    - assets/images/filter.png
+    - assets/images/saldo.jpg
+    - assets/images/pesanan.jpg
+    - assets/images/user.jpg
+    - assets/images/esteh.jpeg
+    - assets/images/geprek.png
+    - assets/images/katsu.png
+    - assets/images/senja.jpg
+    - assets/icons/WA.jpg
+    - assets/patternn1.png
+    - assets/ic_outline-message.svg
     - assets/banners/banner1.png
     - assets/banners/
     - assets/icons/NavigationBar/beranda.svg

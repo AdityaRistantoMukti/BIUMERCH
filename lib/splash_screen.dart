@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
       bool isLoggedIn = await _checkLoginStatus();
       if (isLoggedIn) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => LandingPage()),
+          MaterialPageRoute(builder: (_) => BottomNavigation()),
         );
       } else {
         Navigator.of(context).pushReplacement(

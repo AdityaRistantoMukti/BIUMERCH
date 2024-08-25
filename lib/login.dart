@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -38,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => LandingPage(),
+            builder: (context) => BottomNavigation(),
           ),
         );
       } on FirebaseAuthException catch (e) {
@@ -138,7 +139,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => LandingPage(),
+            builder: (context) => BottomNavigation(),
           ),
         );
       }

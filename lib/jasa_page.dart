@@ -136,7 +136,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
               height: 1.0,
             ),
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
                   Padding(

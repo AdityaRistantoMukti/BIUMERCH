@@ -1,7 +1,7 @@
-import 'package:biumerch_mobile_app/halaman_keranjang.dart';
+
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/history_page.dart';
 import 'package:biumerch_mobile_app/jasa_page.dart';
-import 'package:biumerch_mobile_app/landing_page.dart';
 import 'package:biumerch_mobile_app/makanan_minuman.dart';
 import 'package:biumerch_mobile_app/perlengkapan_page.dart';
 import 'package:biumerch_mobile_app/profile_page.dart';
@@ -14,7 +14,7 @@ class CategoryPage extends StatelessWidget {
     return WillPopScope(
       onWillPop: () async {
         Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => LandingPage(),
+          builder: (context) => BottomNavigation(),
         ));
         return false;
       },
@@ -25,7 +25,7 @@ class CategoryPage extends StatelessWidget {
             icon: Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () {
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => LandingPage()),
+                MaterialPageRoute(builder: (context) => BottomNavigation()),
               );
             },
           ),
@@ -94,87 +94,7 @@ class CategoryPage extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          items: <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/NavigationBar/beranda.svg',
-                width: 24,
-                height: 24,
-                color: Colors.grey[400],
-              ),
-              label: 'Beranda',
-            ),
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/NavigationBar/kategori.svg',
-                width: 24,
-                height: 24,
-                color: Colors.grey[800],
-              ),
-              label: 'Kategori',
-            ),
-            BottomNavigationBarItem(
-              icon: Image.asset(
-                'assets/icons/NavigationBar/riwayat.png',
-                width: 24,
-                height: 24,
-                color: Colors.grey[400],
-              ),
-              label: 'Riwayat',
-            ),
-            BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/NavigationBar/profil.svg',
-                width: 30,
-                height: 30,
-                color: Colors.grey[400],
-              ),
-              label: 'Profil',
-            ),
-          ],
-          currentIndex: 1,
-          selectedItemColor: Colors.grey[800],
-          unselectedItemColor: Colors.grey[400],
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          onTap: (index) {
-             Widget page;
-
-              switch (index) {
-                case 0:
-                  page = LandingPage();
-                  break;
-                case 1:
-                  page = CategoryPage();
-                  break;
-                case 2:
-                  page = HistoryPage();
-                  break;
-                case 3:
-                  page = ProfilePage();
-                  break;
-                default:
-                  return;
-              }
-             Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => page,
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  final opacityAnimation = animation.drive(
-                    CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
-                  ).drive(
-                    Tween<double>(begin: 0.0, end: 1.0),
-                  );
-                  return FadeTransition(opacity: opacityAnimation, child: child);
-                },
-                transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
-              ),
-            );
-          },
-        ),
+        ), 
       ),
     );
   }
@@ -243,7 +163,7 @@ class CategoryPage extends StatelessWidget {
         page = HalamanPerlengkapan();
         break;              
       default:
-        page = LandingPage();
+        page = BottomNavigation();
     }
     Navigator.pushReplacement(
       context,
@@ -257,7 +177,7 @@ class CategoryPage extends StatelessWidget {
           );
           return FadeTransition(opacity: opacityAnimation, child: child);
         },
-        transitionDuration: Duration(milliseconds: 700), // Durasi transisi yang lebih panjang
+        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/category_page.dart';
 import 'package:biumerch_mobile_app/history_page.dart';
 import 'package:biumerch_mobile_app/landing_page.dart';
@@ -76,7 +77,7 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
     Widget page;
     switch (index) {
       case 0:
-        page = LandingPage();
+        page = BottomNavigation();
         break;
       case 1:
         page = CategoryPage();
@@ -88,7 +89,7 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
         page = ProfilePage();
         break;
       default:
-        page = LandingPage();
+        page = BottomNavigation();
     }
 
     Navigator.pushReplacement(
@@ -135,13 +136,16 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
         elevation: 0, // Menghilangkan bayangan AppBar
       ),
       body: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             // Garis di atas UI search
             Container(
               height: 1,
-              color: Colors.grey[300],
+              decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
             ),
             SizedBox(height: 8),
             TextField(

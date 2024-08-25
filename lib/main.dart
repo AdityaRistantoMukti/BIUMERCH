@@ -3,7 +3,12 @@ import 'package:biumerch_mobile_app/RegisterPage.dart';
 import 'package:biumerch_mobile_app/VerificationPage.dart';
 import 'package:biumerch_mobile_app/VerificationSuccessPage.dart';
 import 'package:biumerch_mobile_app/WelcomePage.dart';
+import 'package:biumerch_mobile_app/chat_page.dart';
+import 'package:biumerch_mobile_app/formatif.dart';
 import 'package:biumerch_mobile_app/login.dart';
+import 'package:biumerch_mobile_app/penjual_toko.dart';
+import 'package:biumerch_mobile_app/profile_page.dart';
+import 'package:biumerch_mobile_app/tokobaru.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -38,6 +43,11 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => WelcomePage(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
+        '/profile': (context) => const ProfilePage(),
+        '/chatpage': (context) => const ChatPage(),        
+        '/sellerProfile': (context) => SellerProfileScreen(storeId: ''), // Sesuaikan dengan logika  
+        '/formatif': (context) => const FormatifPage(),      
+        '/tokobaru': (context) => const TokoBaruPage(), // Tambahkan route untuk TokoBaruPage
         '/verification': (context) => VerificationPage(
               verificationId: '', // Placeholder, will be set during navigation
               phone: '', // Placeholder, will be set during navigation
@@ -45,7 +55,7 @@ class MyApp extends StatelessWidget {
         '/verification_success': (context) => VerificationSuccessPage(),        
         '/forgot_password': (context) =>
             ForgotPasswordPage(), // Tambahkan route untuk halaman lupa password
-      },
+      },  
       
     );
   }

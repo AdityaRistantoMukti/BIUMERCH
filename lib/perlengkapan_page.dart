@@ -135,10 +135,10 @@ class _HalamanPerlengkapanState extends State<HalamanPerlengkapan> with WidgetsB
         child: Column(
           children: [
             Container(
-              decoration: BoxDecoration(
-                color: Color(0xFFF3F3F3),
-                borderRadius: BorderRadius.circular(10),
-              ),
+             decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
