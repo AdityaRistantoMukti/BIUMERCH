@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
-import 'ganti_password.dart'; 
+import '../modul1/ganti_password.dart'; 
 import 'ganti_email.dart'; 
 
 class EditProfilePage extends StatefulWidget {

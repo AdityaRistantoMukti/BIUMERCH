@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'package:biumerch_mobile_app/page_payment/cart.dart';
+import 'package:biumerch_mobile_app/modul4/page_payment/cart.dart';
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
+import 'package:biumerch_mobile_app/utils/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
@@ -11,10 +12,10 @@ import 'banner_model.dart';
 import 'banner_service.dart';
 import 'product.dart';
 import 'search_page.dart';
-import 'package:biumerch_mobile_app/perlengkapan_page.dart';
-import 'package:biumerch_mobile_app/makanan_minuman.dart';
-import 'package:biumerch_mobile_app/jasa_page.dart';
-import 'package:biumerch_mobile_app/category_page.dart';
+import 'package:biumerch_mobile_app/modul3/perlengkapan_page.dart';
+import 'package:biumerch_mobile_app/modul3/makanan_minuman.dart';
+import 'package:biumerch_mobile_app/modul3/jasa_page.dart';
+import 'package:biumerch_mobile_app/modul3/category_page.dart';
 
 void main() {
   runApp(MyApp());
@@ -46,6 +47,7 @@ class _LandingPageState extends State<LandingPage> {
   late Future<List<Product>> _recommendedProductsFuture; // Tambahkan ini untuk rekomendasi
   String _searchQuery = '';
   String _username = ''; // Variabel untuk menyimpan username
+  bool _isLoggedIn = false; // Status login
   int _totalBanners = 0;
 
   @override
@@ -58,16 +60,46 @@ class _LandingPageState extends State<LandingPage> {
       });
       return banners;
     });
-    _productsFuture = fetchProducts();
-    _recommendedProductsFuture = _getRecommendedProducts(); // Inisialisasi Future rekomendasi
-     _loadUsername(); // Panggil fungsi untuk load username
+
+    _checkLoginStatus(); // Cek apakah user sudah login
+
+    if (_isLoggedIn) {
+      _productsFuture = fetchProducts();
+      _recommendedProductsFuture = _getRecommendedProducts(); // Inisialisasi Future rekomendasi
+      _loadUsername(); // Panggil fungsi untuk load username
+    } else {
+      _productsFuture = fetchAllProducts(); // Ambil semua produk jika belum login
+    }
   }
 
-  Future<void> _loadUsername() async {
-    String? username = await _fetchUsername(); // Tunggu hasil dari _fetchUsername
+  Future<void> _checkLoginStatus() async {
+    User? user = FirebaseAuth.instance.currentUser;
     setState(() {
-      _username = username ?? ''; // Update state dengan username
+      _isLoggedIn = user != null; // True jika user sudah login
     });
+  }
+
+ Future<void> _loadUsername() async {
+    final userProfile = await fetchUserProfile();
+
+    setState(() {
+      _username = userProfile?['username'] ?? '';
+    });
+  }
+
+  Future<List<Product>> fetchAllProducts() async {
+    try {
+      final List<Product> products = await FirebaseFirestore.instance
+          .collection('products')
+          .get()
+          .then((snapshot) {
+        return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
+      });
+      return products;
+    } catch (e) {
+      print('Error fetching all products: $e');
+      return [];
+    }
   }
 
   Future<List<Product>> fetchProducts() async {
@@ -89,46 +121,69 @@ class _LandingPageState extends State<LandingPage> {
   Future<List<Product>> _getRecommendedProducts() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      QuerySnapshot clickedProductsSnapshot = await FirebaseFirestore.instance
+      // Ambil kategori dengan visitCount terbesar
+      QuerySnapshot categorySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .collection('clicked_products')
-          .orderBy('count', descending: true)
-          .limit(10)
+          .collection('categoryVisits')
+          .orderBy('visitCount', descending: true)
+          .limit(1) // Hanya ambil 1 kategori dengan visitCount terbanyak
           .get();
 
-      List<Product> recommendedProducts = [];
-      for (var doc in clickedProductsSnapshot.docs) {
-        String category = doc['category'];
+      if (categorySnapshot.docs.isNotEmpty) {
+        String topCategory = categorySnapshot.docs.first.id;
+
+        // Ambil produk dari kategori dengan visitCount terbanyak
         QuerySnapshot productsSnapshot = await FirebaseFirestore.instance
             .collection('products')
-            .where('category', isEqualTo: category)
-            .limit(5)
+            .where('category', isEqualTo: topCategory)
+            .limit(10) // Batasi jumlah produk yang diambil
             .get();
-        recommendedProducts.addAll(
-            productsSnapshot.docs.map((doc) => Product.fromFirestore(doc)));
+
+        return productsSnapshot.docs
+            .map((doc) => Product.fromFirestore(doc))
+            .toList();
+      } else {
+        // Jika tidak ada kategori yang ditemukan, kembalikan list kosong
+        return [];
       }
-      return recommendedProducts;
     } else {
+      // Jika user tidak login, kembalikan list kosong
       return [];
     }
   }
 
-  Future<String?> _fetchUsername() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      if (user.displayName != null && user.displayName!.isNotEmpty) {
-        return user.displayName;
-      } else {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        return userDoc['username'];
-      }
-    }
-    return null;
-  }
+//   Future<String?> _fetchUsername() async {
+//   User? user = FirebaseAuth.instance.currentUser;
+//   if (user != null) {
+//     String email = user.email ?? '';
+
+//     try {
+//       // Mencari dokumen user berdasarkan email
+//       QuerySnapshot userQuery = await FirebaseFirestore.instance
+//           .collection('users')
+//           .where('email', isEqualTo: email)
+//           .limit(1)
+//           .get();
+
+//       if (userQuery.docs.isNotEmpty) {
+//         // Mengambil username dari dokumen user yang ditemukan
+//         DocumentSnapshot userDoc = userQuery.docs.first;
+//         return userDoc['username']; // Pastikan field ini ada di Firestore
+//       } else {
+//         // Jika user tidak ditemukan, log atau return null
+//         print('User dengan email $email tidak ditemukan di Firestore');
+//         return null;
+//       }
+//     } catch (e) {
+//       print('Error saat mengambil username: $e');
+//       return null;
+//     }
+//   }
+//   return null;
+// }
+
+
 
   @override
   void dispose() {
@@ -154,62 +209,66 @@ class _LandingPageState extends State<LandingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        toolbarHeight: MediaQuery.of(context).size.height * 0.14,
-        elevation: 0,
-        title: Padding(
-          padding: EdgeInsets.only(left: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Halo,',
-                style: TextStyle(
-                  fontSize: 24.0,
-                  fontWeight: FontWeight.bold,
+      appBar: _isLoggedIn
+          ? AppBar(
+              automaticallyImplyLeading: false,
+              toolbarHeight: MediaQuery.of(context).size.height * 0.13,
+              elevation: 0,
+              title: Padding(
+                padding: EdgeInsets.only(left: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Halo,',
+                      style: TextStyle(
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      _username,
+                      style: TextStyle(
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.bold,
+                        color: const Color.fromRGBO(76, 175, 80, 1),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                _username, // Tampilkan username yang sudah di-load
-                style: TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.bold,
-                  color: const Color.fromRGBO(76, 175, 80, 1),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => KeranjangPage()),
+                      );
+                    },
+                    icon: Icon(Icons.shopping_cart_outlined, size: 40.0),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => KeranjangPage()),
-                );
-              },
-              icon: Icon(Icons.shopping_cart_outlined, size: 40.0),
-            ),
-          ),
-        ],
-      ),
+              ],
+            )
+          : null,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SearchPage()),
-                );
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1.0),
+            SizedBox(
+              height: _isLoggedIn ? 8.0 : 50.0, // Jarak dari atas layar
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SearchPage()),
+                  );
+                },
                 child: AbsorbPointer(
                   child: TextField(
                     enabled: false,
@@ -297,8 +356,7 @@ class _LandingPageState extends State<LandingPage> {
                                         } else {
                                           return Shimmer.fromColors(
                                             baseColor: Colors.grey[300]!,
-                                            highlightColor:
-                                                Colors.grey[100]!,
+                                            highlightColor: Colors.grey[100]!,
                                             child: Container(
                                               color: Colors.grey[300],
                                               height: 200.0,
@@ -419,7 +477,7 @@ class _LandingPageState extends State<LandingPage> {
                   ),
                   SizedBox(height: 10.0),
                   FutureBuilder<List<Product>>(
-                    future: _recommendedProductsFuture, // Gunakan Future yang sudah disimpan
+                    future: _isLoggedIn ? _recommendedProductsFuture : _productsFuture, // Pilih Future berdasarkan status login
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return Center(child: CircularProgressIndicator());

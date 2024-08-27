@@ -1,5 +1,5 @@
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
-import 'package:biumerch_mobile_app/landing_page.dart';
+import 'package:biumerch_mobile_app/modul3/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -112,23 +112,32 @@ class _LoginPageState extends State<LoginPage> {
             'createdAt': FieldValue.serverTimestamp(),
             'balance': 0, // Set initial balance to 0
             'idUser': user.uid, // Set idUser to the same as the document ID
-            'phoneNumber': '', // Set phoneNumber to empty string
+            'phone': '', // Set phoneNumber to empty string
             'profilePicture': '', // Set profilePicture to empty string
           });
 
-          // Create the clicked_products sub-collection
-          String productId = 'exampleProductId';
-          String category = 'exampleCategory';
-          int initialCount = 1;
+         // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
+          List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
 
           await _firestore.collection('users').doc(user.uid)
-              .collection('clicked_products').doc(productId).set({
-            'category': category,
-            'timestamp': FieldValue.serverTimestamp(),
-            'count': initialCount,
+              .collection('categoryVisits')
+              .get()
+              .then((snapshot) async {
+            if (snapshot.docs.isEmpty) {
+              // Jika sub-koleksi 'categoryVisits' kosong, tambahkan dokumen dengan nama kategori
+              for (String category in categories) {
+                await _firestore.collection('users').doc(user.uid)
+                    .collection('categoryVisits').doc(category).set({
+                  'category': category,
+                  'visitCount': 0,
+                  'timestamp': FieldValue.serverTimestamp(),
+                });
+              }
+              print("Category visits collection created with initial categories for user ${user.uid}");
+            } else {
+              print("Category visits collection already exists for user ${user.uid}");
+            }
           });
-
-          print("User and clicked_products collection created for user ${user.uid}");
         }
 
         // Save login status

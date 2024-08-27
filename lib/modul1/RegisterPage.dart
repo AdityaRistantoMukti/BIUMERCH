@@ -39,23 +39,23 @@ class _RegisterPageState extends State<RegisterPage> {
               'createdAt': FieldValue.serverTimestamp(),
             });
 
-            // Example data for the clicked_products collection
-            String productId = 'exampleProductId';
-            String category = 'exampleCategory';
-            int initialCount = 1;
+            // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
+              List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
 
-            // Debug print before writing to clicked_products
-            print("Creating clicked_products collection for user ${userCredential.user!.uid}");
+              // Debug print sebelum menulis ke categoryVisits
+              print("Creating categoryVisits collection for user ${userCredential.user!.uid}");
 
-            await _firestore.collection('users').doc(userCredential.user!.uid)
-                .collection('clicked_products').doc(productId).set({
-              'category': category,
-              'timestamp': FieldValue.serverTimestamp(),
-              'count': initialCount,
-            });
+              for (String category in categories) {
+                await _firestore.collection('users').doc(userCredential.user!.uid)
+                    .collection('categoryVisits').doc(category).set({
+                  'category': category,
+                  'visitCount': 0,    
+                });
+              }
 
-            // Debug print after writing to clicked_products
-            print("clicked_products collection created for product ID: $productId");
+              // Debug print setelah menulis ke categoryVisits
+              print("categoryVisits collection created with initial categories for user ${userCredential.user!.uid}");
+
 
             // Mengirim email verifikasi
             await userCredential.user!.sendEmailVerification();

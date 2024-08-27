@@ -60,7 +60,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    Image.asset('assets/lupapw.png',
+                    Image.asset('assets/lupa_pw.png',
                         height: 40), // Ganti dengan path logo Anda
                     SizedBox(width: 10),
                     Text(

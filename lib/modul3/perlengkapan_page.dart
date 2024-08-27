@@ -1,11 +1,11 @@
-import 'package:biumerch_mobile_app/category_page.dart';
-import 'package:biumerch_mobile_app/history_page.dart';
-import 'package:biumerch_mobile_app/landing_page.dart';
-import 'package:biumerch_mobile_app/profile_page.dart';
+import 'package:biumerch_mobile_app/modul3/category_page.dart';
+import 'package:biumerch_mobile_app/modul3/landing_page.dart';
+import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
+import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:biumerch_mobile_app/product.dart'; // Import Product and ProductCard
+import 'package:biumerch_mobile_app/modul3/product.dart'; // Import Product and ProductCard
 
 class HalamanPerlengkapan extends StatefulWidget {
   @override

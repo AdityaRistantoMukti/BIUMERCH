@@ -1,4 +1,4 @@
-import 'package:biumerch_mobile_app/banner_model.dart';
+import 'package:biumerch_mobile_app/modul3/banner_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BannerService {

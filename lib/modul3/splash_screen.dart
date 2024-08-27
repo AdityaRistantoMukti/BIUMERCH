@@ -1,9 +1,6 @@
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:biumerch_mobile_app/landing_page.dart';
-import 'package:biumerch_mobile_app/WelcomePage.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -21,22 +18,10 @@ class _SplashScreenState extends State<SplashScreen> {
     var duration = const Duration(seconds: 3);
     await Future.delayed(duration);  // Pause for the duration
     if (mounted) {  // Ensure widget is still in the tree
-      bool isLoggedIn = await _checkLoginStatus();
-      if (isLoggedIn) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => BottomNavigation()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => WelcomePage()),
-        );
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => BottomNavigation()),  // Directly navigate to BottomNavigation
+      );
     }
-  }
-
-  Future<bool> _checkLoginStatus() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('isLoggedIn') ?? false;
   }
 
   @override
@@ -62,4 +47,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-

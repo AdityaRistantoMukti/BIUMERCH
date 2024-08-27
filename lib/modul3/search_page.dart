@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:biumerch_mobile_app/landing_page.dart';
-import 'package:biumerch_mobile_app/search_results_page.dart';
+import 'package:biumerch_mobile_app/modul3/landing_page.dart';
+import 'package:biumerch_mobile_app/modul3/search_results_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SearchPage extends StatefulWidget {

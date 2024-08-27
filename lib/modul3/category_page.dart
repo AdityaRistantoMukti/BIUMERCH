@@ -1,10 +1,9 @@
 
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
-import 'package:biumerch_mobile_app/history_page.dart';
-import 'package:biumerch_mobile_app/jasa_page.dart';
-import 'package:biumerch_mobile_app/makanan_minuman.dart';
-import 'package:biumerch_mobile_app/perlengkapan_page.dart';
-import 'package:biumerch_mobile_app/profile_page.dart';
+import 'package:biumerch_mobile_app/modul3/jasa_page.dart';
+import 'package:biumerch_mobile_app/modul3/makanan_minuman.dart';
+import 'package:biumerch_mobile_app/modul3/perlengkapan_page.dart';
+import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 

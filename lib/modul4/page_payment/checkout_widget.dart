@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'payment_page_qris.dart';
-import '../login.dart';
+import '../../modul1/login.dart';
 
 class CheckoutWidget extends StatefulWidget {
   final List<Map<String, dynamic>> checkedItems;

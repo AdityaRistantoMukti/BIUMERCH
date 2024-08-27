@@ -5,49 +5,31 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import '../login.dart'; // Import the login page
-import 'cart.dart';
+import '../../modul1/login.dart';  // Import the login page
 
-class PaymentPageQris extends StatefulWidget {
-  final List<Map<String, dynamic>> checkedItems;
-  final int totalPrice;
-  final String customerName;
-  final String customerPhone;
-  final String additionalNotes;
+class PaymentHistoryPage extends StatefulWidget {
+  final String transactionId;
+  final bool isTemp;
 
-  PaymentPageQris({
-    required this.checkedItems,
-    required this.totalPrice,
-    required this.customerName,
-    required this.customerPhone,
-    required this.additionalNotes,
-  });
+  PaymentHistoryPage({required this.transactionId, required this.isTemp});
 
   @override
-  _PaymentPageQrisState createState() => _PaymentPageQrisState();
+  _PaymentHistoryPageState createState() => _PaymentHistoryPageState();
 }
 
-class _PaymentPageQrisState extends State<PaymentPageQris> {
+class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  String? _qrisUrl;
-  String _authToken = '';
   Timer? _timer;
-  String? _refId;
   int _remainingTime = 0;
   DateTime? _expiryTime;
-  Map<String, String> _storeNames = {};
+  Map<String, dynamic>? transactionData;
+  String _authToken = '';
 
   @override
   void initState() {
     super.initState();
     _initializeAuthToken();
-    _fetchStoreNames();
-    _generateQris();
+    _fetchTransactionData();
     _startTimer();
     _startPaymentStatusCheck();
   }
@@ -67,128 +49,32 @@ class _PaymentPageQrisState extends State<PaymentPageQris> {
     });
   }
 
-  Future<void> _fetchStoreNames() async {
-    for (var item in widget.checkedItems) {
-      String storeId = item['storeId'];
-      if (!_storeNames.containsKey(storeId)) {
-        DocumentSnapshot storeDoc = await _firestore.collection('stores').doc(storeId).get();
-        if (storeDoc.exists) {
-          setState(() {
-            _storeNames[storeId] = storeDoc['storeName'];
-          });
-        }
-      }
-    }
-  }
+  Future<void> _fetchTransactionData() async {
+    User? user = FirebaseAuth.instance.currentUser;
 
-  Future<void> _generateQris() async {
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.paydia.id/qris/generate/'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': _authToken,
-        },
-        body: jsonEncode({
-          'merchantid': '240726002000000',
-          'nominal': widget.totalPrice,
-          'tip': 0,
-          'ref': DateTime.now().millisecondsSinceEpoch.toString(),
-          'callback': 'https://valiant-wonder.railway.app',
-          'expire': 20,
-        }),
+    if (user == null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
       );
-
-      final responseData = jsonDecode(response.body);
-      setState(() {
-        _qrisUrl = responseData['rawqr'];
-        _refId = responseData['refid'];
-        _expiryTime = DateTime.now().add(Duration(minutes: 20));
-      });
-
-      if (_qrisUrl != null) {
-        await _saveQrisToStorage(_qrisUrl!);
-      }
-    } catch (e) {
-      print('Error generating QRIS: $e');
-    }
-  }
-Future<void> _saveQrisToStorage(String qrisUrl) async {
-  User? user = FirebaseAuth.instance.currentUser;
-
-  if (user == null) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
-    );
-    return;
-  }
-
-  try {
-    final response = await http.get(Uri.parse(
-        'https://api.qrserver.com/v1/create-qr-code/?data=$qrisUrl&size=200x200'));
-    final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/$_refId.png');
-    await file.writeAsBytes(response.bodyBytes);
-
-    final storageRef = _storage.ref().child('qris/${_refId}.png');
-    final uploadTask = storageRef.putFile(file);
-    final snapshot = await uploadTask;
-    final downloadUrl = await snapshot.ref.getDownloadURL();
-
-    // Group items by storeId
-    Map<String, Map<String, dynamic>> storeData = {};
-
-    for (var item in widget.checkedItems) {
-      String storeId = item['storeId'];
-      if (storeData[storeId] == null) {
-        storeData[storeId] = {
-          'storeId': storeId,
-          'storeName': _storeNames[storeId],
-          'catatanTambahan': widget.additionalNotes,
-          'items': [],
-        };
-      }
-
-      storeData[storeId]!['items'].add({
-  'productImage': item['productImage'],
-  'productName': item['productName'],
-  'productPrice': (item['productPrice'] as num).toInt(), // Ensure it's an int
-  'selectedOptions': item['selectedOption'] ?? '',
-  'quantity': (item['quantity'] as num).toInt(), // Ensure it's an int
-  'timestamp': DateTime.now(), // Replace FieldValue.serverTimestamp() with DateTime.now()
-  'totalHarga': (item['productPrice'] as num).toInt() * (item['quantity'] as num).toInt(), // Calculate total price
-});
-
+      return;
     }
 
-    // Convert map to list for Firestore
-    List<Map<String, dynamic>> storeList = storeData.values.toList();
-
-    await _firestore
+    var collection = widget.isTemp ? 'transaksiTemp' : 'transaksi';
+    var doc = await _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('transaksiTemp')
-        .doc(_refId)
-        .set({
-      'qrisUrl': downloadUrl,
-      'status': 'pending',
-      'customerName': widget.customerName,
-      'customerPhone': widget.customerPhone,
-      'totalPrice': widget.totalPrice,
-      'stores': storeList, // Store the store data as a list
-      'timestamp': FieldValue.serverTimestamp(),
-      'expiryTime': _expiryTime,
-    }, SetOptions(merge: true));
-  } catch (e) {
-    print('Error saving QRIS to storage: $e');
+        .collection(collection)
+        .doc(widget.transactionId)
+        .get();
+
+    if (doc.exists) {
+      setState(() {
+        transactionData = doc.data();
+        _expiryTime = (transactionData!['expiryTime'] as Timestamp).toDate();
+      });
+    }
   }
-}
-
-
-
-
 
   void _startTimer() {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
@@ -226,9 +112,7 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
             _remainingTime = 0;
           });
         }
-        if (mounted) {
-          _onPaymentTimeout();
-        }
+        _onPaymentTimeout();
       }
     }
   }
@@ -247,20 +131,26 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
       elapsed += checkInterval;
       if (elapsed >= _remainingTime) {
         timer.cancel();
-        await _onPaymentTimeout();
+        if (mounted) {
+          _onPaymentTimeout();
+        }
         return;
       }
 
       final isSuccess = await _checkPaymentStatus();
       if (isSuccess) {
         timer.cancel();
-        await _onPaymentSuccess();
+        if (mounted) {
+          _onPaymentSuccess();
+        }
       }
     });
   }
 
   Future<bool> _checkPaymentStatus() async {
-    try {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
       final response = await http.post(
         Uri.parse('https://api.paydia.id/qris/check-status/'),
         headers: {
@@ -269,19 +159,17 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
           'Authorization': _authToken,
         },
         body: jsonEncode({
-          'refid': _refId,
+          'refid': widget.transactionId,
         }),
       );
 
       final responseData = jsonDecode(response.body);
       return responseData['status'] == 'success';
-    } catch (e) {
-      print('Error checking payment status: $e');
-      return false;
     }
+    return false;
   }
 
- Future<void> _onPaymentSuccess() async {
+Future<void> _onPaymentSuccess() async {
   User? user = FirebaseAuth.instance.currentUser;
 
   if (user != null) {
@@ -289,27 +177,28 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
         .collection('users')
         .doc(user.uid)
         .collection('transaksiTemp')
-        .doc(_refId)
+        .doc(widget.transactionId)
         .update({'status': 'completed'});
 
     var transaksiTempDoc = await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('transaksiTemp')
-        .doc(_refId)
+        .doc(widget.transactionId)
         .get();
+
     await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('transaksi')
-        .doc(_refId)
+        .doc(widget.transactionId)
         .set(transaksiTempDoc.data()!);
 
     await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('transaksiTemp')
-        .doc(_refId)
+        .doc(widget.transactionId)
         .delete();
 
     showGeneralDialog(
@@ -412,27 +301,27 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
           .collection('users')
           .doc(user.uid)
           .collection('transaksiTemp')
-          .doc(_refId)
+          .doc(widget.transactionId)
           .update({'status': 'cancel'});
 
       var transaksiTempDoc = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('transaksiTemp')
-          .doc(_refId)
+          .doc(widget.transactionId)
           .get();
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('transaksi')
-          .doc(_refId)
+          .doc(widget.transactionId)
           .set(transaksiTempDoc.data()!);
 
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('transaksiTemp')
-          .doc(_refId)
+          .doc(widget.transactionId)
           .delete();
 
       if (mounted) {
@@ -497,53 +386,50 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => KeranjangPage(),
-          ),
-        );
-        return false;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.grey.shade100,
+    if (transactionData == null) {
+      return Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => KeranjangPage(),
-                ),
-              );
-            },
-          ),
-          title: Text(
-            'Detail Pembayaran',
-            style: TextStyle(
-              color: Color(0xFF000000),
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Nunito',
-            ),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 1,
-          centerTitle: true,
+          title: const Text('Detail Pembayaran'),
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTimeRemainingCard(),
-                _buildPaymentMethodCard(),
-                _buildDetailPesananCard(),
-                _buildTotalHargaCard(),
-              ],
-            ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          },
+        ),
+        title: Text(
+          'Detail Pembayaran',
+          style: TextStyle(
+            color: Color(0xFF000000),
+            fontSize: 25,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Nunito',
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTimeRemainingCard(),
+              _buildPaymentMethodCard(),
+              _buildDetailPesananCard(),
+              _buildTotalHargaCard(),
+            ],
           ),
         ),
       ),
@@ -552,9 +438,7 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
 
   Widget _buildTimeRemainingCard() {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       color: Colors.white,
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -592,9 +476,7 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
 
   Widget _buildPaymentMethodCard() {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       color: Colors.white,
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -624,12 +506,12 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
             ),
             SizedBox(height: 16),
             Center(
-              child: _qrisUrl != null
+              child: transactionData?['qrisUrl'] != null
                   ? Column(
                       children: [
                         SizedBox(height: 8),
                         Image.network(
-                          'https://api.qrserver.com/v1/create-qr-code/?data=$_qrisUrl&size=200x200',
+                          transactionData!['qrisUrl'],
                           width: 200,
                           height: 200,
                         ),
@@ -643,186 +525,112 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
     );
   }
 
- 
+  Widget _buildDetailPesananCard() {
+    final stores = transactionData?['stores'] as List<dynamic>? ?? [];
 
-Widget _buildDetailPesananCard() {
-  final formatCurrency = NumberFormat.currency(
-      locale: 'id_ID', symbol: 'Rp. ', decimalDigits: 0);
-
-  // Grouping items by storeId
-  Map<String, List<Map<String, dynamic>>> groupedItems = {};
-  for (var item in widget.checkedItems) {
-    String storeId = item['storeId'];
-    if (!groupedItems.containsKey(storeId)) {
-      groupedItems[storeId] = [];
-    }
-    groupedItems[storeId]!.add(item);
-  }
-
-  List<Widget> storeGroups = [];
-  groupedItems.forEach((storeId, items) {
-    storeGroups.add(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Nama Toko:',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Nunito',
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                _storeNames[storeId] ?? 'Unknown Store',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Nunito',
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Divider(
-            color: Colors.black,
-            thickness: 1.0,
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: items.map((item) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8.0),
-                      child: Image.network(
-                        item['productImage'],
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${item['productName']} x${item['quantity']}',
-                            style: TextStyle(
-                              fontFamily: 'Nunito',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          if (item['selectedOption'] != null && item['selectedOption'].isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Text(
-                                '${item['selectedOption']}',
-                                style: TextStyle(
-                                  fontFamily: 'Nunito',
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      formatCurrency.format(item['productPrice'] * item['quantity']),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Nunito',
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-          SizedBox(height: 8),
-          Divider(
-            color: Colors.black,
-            thickness: 1.0,
-          ),
-          if (widget.additionalNotes.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Catatan Tambahan:',
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
-              child: Text(
-                widget.additionalNotes,
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 16,
-                ),
+    return Card(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Detail Pesanan',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Nunito',
               ),
             ),
             Divider(
               color: Colors.black,
               thickness: 1.0,
             ),
+            ...stores.map((store) {
+              final items = store['items'] as List<dynamic>? ?? [];
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: items.map((item) {
+                  final productName = item['productName'] ?? 'Unknown Product';
+                  final quantity = item['quantity'] ?? 1;
+                  final selectedOptions = item['selectedOptions'] ?? '';
+                  final productPrice = item['productPrice'] ?? 0;
+                  final productImage = item['productImage'] ?? '';
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            productImage,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$productName x$quantity',
+                                style: TextStyle(
+                                  fontFamily: 'Nunito',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              if (selectedOptions.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Text(
+                                    selectedOptions,
+                                    style: TextStyle(
+                                      fontFamily: 'Nunito',
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(productPrice)}',
+                          style: TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+            }).toList(),
           ],
-        ],
+        ),
       ),
     );
-  });
-
-  return Card(
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-    color: Colors.white,
-    elevation: 2,
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Detail Pesanan',
-            style: TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Nunito',
-            ),
-          ),
-          Divider(
-            color: Colors.black,
-            thickness: 1.0,
-          ),
-          ...storeGroups,
-        ],
-      ),
-    ),
-  );
-}
-
+  }
 
   Widget _buildTotalHargaCard() {
     final formatCurrency = NumberFormat.currency(
-        locale: 'id_ID', symbol: 'Rp. ', decimalDigits: 0);
-
+      locale: 'id_ID', 
+      symbol: 'Rp. ', 
+      decimalDigits: 0,
+    );
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       color: Colors.white,
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -836,30 +644,23 @@ Widget _buildDetailPesananCard() {
               children: [
                 TableRow(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Text(
-                        'Total Harga :',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: 'Nunito',
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green),
+                    Text(
+                      'Total Harga :',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'Nunito',
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatCurrency.format(widget.totalPrice),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                            fontFamily: 'Nunito',
-                          ),
-                        ),
-                      ],
+                    Text(
+                      formatCurrency.format(transactionData!['totalPrice']),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                        fontFamily: 'Nunito',
+                      ),
                     ),
                   ],
                 ),

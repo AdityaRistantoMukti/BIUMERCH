@@ -116,7 +116,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           items: <String>[
                             'Makanan & Minuman',
                             'Elektronik',
-                            'Pakaian'
+                            'Jasa'
                           ].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,

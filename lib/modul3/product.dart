@@ -1,9 +1,9 @@
-import 'package:biumerch_mobile_app/category_page.dart';
+import 'package:biumerch_mobile_app/modul3/category_page.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:biumerch_mobile_app/food_detail_page.dart';
+import 'package:biumerch_mobile_app/modul3/food_detail_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Product {
@@ -98,15 +98,34 @@ class ProductCard extends StatelessWidget {
     }
   }
 
+  Future<void> _recordCategoryVisit(String category) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentReference categoryRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('categoryVisits')
+          .doc(category);
 
+      FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentSnapshot snapshot = await transaction.get(categoryRef);
+        if (snapshot.exists) {
+          // Jika kategori sudah ada, tambahkan jumlah kunjungan
+          transaction.update(categoryRef, {'visitCount': FieldValue.increment(1)});
+        } else {
+          // Jika kategori belum ada, buat dokumen baru dengan visitCount = 1
+          transaction.set(categoryRef, {'visitCount': 1});
+        }
+      });
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return GestureDetector(
       onTap: () {
-         _trackProductClick(product.id, product.category);
-         _saveProductClickToFirestore(product.id, product.category);
+        _recordCategoryVisit(product.category);
         Navigator.push(
           context,
           MaterialPageRoute(

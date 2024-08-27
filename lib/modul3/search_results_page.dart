@@ -1,4 +1,4 @@
-import 'package:biumerch_mobile_app/product.dart';
+import 'package:biumerch_mobile_app/modul3/product.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 

@@ -1,19 +1,19 @@
-import 'package:biumerch_mobile_app/ForgotPasswordPage.dart';
-import 'package:biumerch_mobile_app/RegisterPage.dart';
-import 'package:biumerch_mobile_app/VerificationPage.dart';
-import 'package:biumerch_mobile_app/VerificationSuccessPage.dart';
-import 'package:biumerch_mobile_app/WelcomePage.dart';
-import 'package:biumerch_mobile_app/chat_page.dart';
+import 'package:biumerch_mobile_app/modul1/ForgotPasswordPage.dart';
+import 'package:biumerch_mobile_app/modul1/RegisterPage.dart';
+import 'package:biumerch_mobile_app/modul1/VerificationPage.dart';
+import 'package:biumerch_mobile_app/modul1/VerificationSuccessPage.dart';
+import 'package:biumerch_mobile_app/modul1/WelcomePage.dart';
+import 'package:biumerch_mobile_app/modul2/chat_page.dart';
 import 'package:biumerch_mobile_app/formatif.dart';
-import 'package:biumerch_mobile_app/login.dart';
-import 'package:biumerch_mobile_app/penjual_toko.dart';
-import 'package:biumerch_mobile_app/profile_page.dart';
-import 'package:biumerch_mobile_app/tokobaru.dart';
+import 'package:biumerch_mobile_app/modul1/login.dart';
+import 'package:biumerch_mobile_app/modul2/penjual_toko.dart';
+import 'package:biumerch_mobile_app/modul2/profile_page.dart';
+import 'package:biumerch_mobile_app/modul2/tokobaru.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import './splash_screen.dart';
+import 'modul3/splash_screen.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 void main() async {
