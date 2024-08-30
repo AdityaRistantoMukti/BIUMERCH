@@ -15,7 +15,7 @@ import 'search_page.dart';
 import 'package:biumerch_mobile_app/modul3/perlengkapan_page.dart';
 import 'package:biumerch_mobile_app/modul3/makanan_minuman.dart';
 import 'package:biumerch_mobile_app/modul3/jasa_page.dart';
-import 'package:biumerch_mobile_app/modul3/category_page.dart';
+
 
 void main() {
   runApp(MyApp());

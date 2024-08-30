@@ -8,8 +8,15 @@ import '../../modul1/login.dart';
 class CheckoutWidget extends StatefulWidget {
   final List<Map<String, dynamic>> checkedItems;
   final int totalPrice;
-
-  CheckoutWidget({required this.checkedItems, required this.totalPrice});
+  final String additionalNotes; // Add this line
+  
+  CheckoutWidget(
+    {
+      required this.checkedItems, 
+      required this.totalPrice,
+      this.additionalNotes = '', // Default to an empty string if not provided
+    }
+    );
 
   @override
   _CheckoutWidgetState createState() => _CheckoutWidgetState();
@@ -30,6 +37,7 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
     super.initState();
     quantities = widget.checkedItems.map((item) => (item['quantity'] as num).toInt()).toList();
     _checkLoginStatus(); // Memeriksa status login pengguna
+    _additionalNotes = widget.additionalNotes;
   }
 
   Future<void> _checkLoginStatus() async {
@@ -207,6 +215,7 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
               color: Colors.black,
             ),
             AdditionalNotes(
+              initialNotes: _additionalNotes, // Menampilkan catatan yang ada
               onNotesChanged: (notes) {
                 setState(() {
                   _additionalNotes = notes;
@@ -827,36 +836,50 @@ class OrderSummary extends StatelessWidget {
 
 class AdditionalNotes extends StatefulWidget {
   final ValueChanged<String> onNotesChanged;
+  final String initialNotes;
 
-  const AdditionalNotes({super.key, required this.onNotesChanged});
+  const AdditionalNotes(
+    {
+      super.key, 
+      required this.onNotesChanged,
+      this.initialNotes = ''
+    }
+  );
 
   @override
   _AdditionalNotesState createState() => _AdditionalNotesState();
 }
 
 class _AdditionalNotesState extends State<AdditionalNotes> {
-  String _notes = '';
+  late String _notes;
 
+
+  @override
+  void initState(){
+    super.initState();
+    _notes = widget.initialNotes; 
+  }
   void _showNotesDialog() async {
-    final String? result = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) {
-        TextEditingController controller = TextEditingController(text: _notes);
-        return AlertDialog(
-          backgroundColor: const Color(0xFFF8F8F8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+  final String? result = await showDialog<String>(
+    context: context,
+    builder: (BuildContext context) {
+      TextEditingController controller = TextEditingController(text: _notes);
+      return AlertDialog(
+        backgroundColor: const Color(0xFFF8F8F8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Isi Catatan Tambahan',
+          style: TextStyle(
+            fontFamily: 'Nunito',
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.black,
           ),
-          title: const Text(
-            'Isi Catatan Tambahan',
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: Colors.black,
-            ),
-          ),
-          content: TextField(
+        ),
+        content: SingleChildScrollView(  // Tambahkan ini
+          child: TextField(
             controller: controller,
             maxLines: 3,
             decoration: InputDecoration(
@@ -878,14 +901,16 @@ class _AdditionalNotesState extends State<AdditionalNotes> {
               color: Colors.black,
             ),
           ),
-          actions: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                TextButton(
+        ),
+        actions: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: TextButton(
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        vertical: 15, horizontal: 45),
+                        vertical: 12, horizontal: 35), // Kurangi padding
                     backgroundColor: const Color(0xFF707070),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -903,11 +928,13 @@ class _AdditionalNotesState extends State<AdditionalNotes> {
                     Navigator.of(context).pop();
                   },
                 ),
-                SizedBox(width: 5),
-                TextButton(
+              ),
+              SizedBox(width: 5),
+              Expanded(
+                child: TextButton(
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        vertical: 15, horizontal: 45),
+                        vertical: 12, horizontal: 35), // Kurangi padding
                     backgroundColor: const Color(0xFF62E703),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -926,12 +953,13 @@ class _AdditionalNotesState extends State<AdditionalNotes> {
                     Navigator.of(context).pop(controller.text);
                   },
                 ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
+              ),
+            ],
+          ),
+        ],
+     );
+    },
+  );
 
     if (result != null && result.isNotEmpty) {
       setState(() {
@@ -940,6 +968,7 @@ class _AdditionalNotesState extends State<AdditionalNotes> {
       widget.onNotesChanged(_notes);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

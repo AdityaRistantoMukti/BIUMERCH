@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../modul2/edit_profile_page.dart';  // Pastikan sudah mengimpor halaman EditProfilePage
+import 'edit_profile_page.dart';  // Pastikan sudah mengimpor halaman EditProfilePage
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -18,11 +18,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureOldPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
-  bool _isLoading = false; // Tambahkan variabel untuk loading
+  bool _isLoading = false;
 
   Future<void> _changePassword() async {
     setState(() {
-      _isLoading = true; // Tampilkan loading
+      _isLoading = true; 
     });
 
     try {
@@ -35,18 +35,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           content: Text("Konfirmasi password tidak cocok!"),
         ));
         setState(() {
-          _isLoading = false; // Sembunyikan loading
+          _isLoading = false;
         });
         return;
       }
 
-      // Simulasi login manual jika belum ada pengguna yang login
       User? user = _auth.currentUser;
-      user ??= (await _auth.signInWithEmailAndPassword(
-        email: "putrazalukhu001@gmail.com",
-        password: "obed0110",
-      ))
-          .user;
 
       if (user != null) {
         // Re-autentikasi user
@@ -97,8 +91,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             );
           },
         ).then((value) {
-          // Kembali ke halaman EditProfilePage setelah pop-up muncul
-          Navigator.of(context).pop(); // Tutup halaman ganti password
+          Navigator.of(context).pop();
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -111,7 +104,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ));
     } finally {
       setState(() {
-        _isLoading = false; // Sembunyikan loading
+        _isLoading = false;
       });
     }
   }
@@ -264,3 +257,4 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 }
+

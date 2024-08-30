@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
 import 'package:mailer/mailer.dart';
@@ -31,7 +32,9 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
     print('Generated OTP: $_otp');
 
     try {
-      await FirebaseFirestore.instance.collection('otps').doc(widget.userId).set({
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+
+      await FirebaseFirestore.instance.collection('otps').doc(userId).set({
         'email': email,
         'otp': _otp,
         'createdAt': FieldValue.serverTimestamp(),
@@ -76,7 +79,7 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => VerifikasiOTPScreen(email: _emailController.text, userId: widget.userId),
+        builder: (context) => VerifikasiOTPScreen(email: _emailController.text, userId: FirebaseAuth.instance.currentUser!.uid),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
+import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
@@ -104,53 +106,74 @@ class _VerifikasiOTPScreenState extends State<VerifikasiOTPScreen> {
   }
 
   void _onVerifikasiPressed() async {
-    if (await verifyOTP(_otpController.text)) {
-      _showSuccessPopup();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP tidak valid')),
-      );
-    }
-  }
-
-  Future<void> _showSuccessPopup() async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SvgPicture.asset(
-                'assets/ic_outline-message.svg', // Menggunakan ikon SVG
-                color: const Color(0xFF62E703),
-                height: 60,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Email Berhasil Diganti!',
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontWeight: FontWeight.w800, // Nunito Extra Bold
-                  fontSize: 20,
-                  color: Color(0xFF000000),
-                ),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Kembali ke halaman sebelumnya (edit profile)
-              },
-            ),
-          ],
-        );
-      },
+  if (await verifyOTP(_otpController.text)) {
+    await _updateEmailInFirestore(); // Panggil metode untuk mengupdate email
+    _showSuccessPopup();
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('OTP tidak valid')),
     );
   }
+}
+
+Future<void> _updateEmailInFirestore() async {
+  try {
+    // Update email di Firestore untuk user yang sedang login
+    await FirebaseFirestore.instance.collection('users').doc(widget.userId).update({
+      'email': widget.email,
+    });
+    print('Email berhasil diganti di Firestore');
+  } catch (e) {
+    print('Gagal mengganti email di Firestore: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal mengganti email di Firestore: $e')),
+    );
+  }
+}
+
+
+  Future<void> _showSuccessPopup() async {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(
+              'assets/ic_outline-message.svg', // Menggunakan ikon SVG
+              color: const Color(0xFF62E703),
+              height: 60,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Email Berhasil Diganti!',
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.w800, // Nunito Extra Bold
+                fontSize: 20,
+                color: Color(0xFF000000),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => BottomNavigation(selectedIndex: 3)), // Navigate to ProfilePage
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

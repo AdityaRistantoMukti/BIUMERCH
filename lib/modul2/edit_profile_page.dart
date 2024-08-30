@@ -3,8 +3,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
-import '../modul1/ganti_password.dart'; 
+import 'ganti_password.dart'; 
 import 'ganti_email.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class EditProfilePage extends StatefulWidget {
   final String username;
@@ -28,7 +30,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   File? _profileImage;
-  final String userId = '0895330621478';
+  late String userId; // Ubah variabel userId menjadi dinamis
   bool _isLoading = false; // Tambahkan variabel untuk loading
 
   @override
@@ -37,6 +39,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _usernameController = TextEditingController(text: widget.username);
     _emailController = TextEditingController(text: widget.email);
     _phoneController = TextEditingController(text: widget.phone);
+
+    // Ambil user ID dari pengguna yang sedang login
+    userId = FirebaseAuth.instance.currentUser!.uid;
   }
 
   Future<String?> _uploadProfileImage(File image) async {
@@ -97,6 +102,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
     }
   }
+
+  // Kode lainnya tidak berubah
+
+
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();

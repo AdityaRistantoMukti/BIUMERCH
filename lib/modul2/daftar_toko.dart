@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class DaftarTokoPage extends StatefulWidget {
   const DaftarTokoPage({super.key});
@@ -44,46 +46,48 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
   }
 
   Future<void> _registerStore() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
+  if (_formKey.currentState!.validate()) {
+    _formKey.currentState!.save();
 
-      setState(() {
-        _isLoading = true;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_selectedImage != null) {
+        await _uploadImage(_selectedImage!);
+      }
+
+      // Ambil user ID dari pengguna yang sudah login
+      String ownerId = FirebaseAuth.instance.currentUser!.uid;
+
+      DocumentReference docRef = await FirebaseFirestore.instance.collection('stores').add({
+        'approved': false,
+        'email': _email,
+        'idstore': '',
+        'ownerId': ownerId,
+        'phoneNumber': _phoneNumber,
+        'product': [],
+        'storeDescription': _storeDescription,
+        'storeLogo': _storeLogoUrl ?? '',
+        'storeName': _storeName,
       });
 
-      try {
-        if (_selectedImage != null) {
-          await _uploadImage(_selectedImage!);
-        }
+      await docRef.update({'idstore': docRef.id});
 
-        String ownerId = '0895330621478'; // Your fixed user ID
-
-        DocumentReference docRef = await FirebaseFirestore.instance.collection('stores').add({
-          'approved': false,
-          'email': _email,
-          'idstore': '',
-          'ownerId': ownerId,
-          'phoneNumber': _phoneNumber,
-          'product': [],
-          'storeDescription': _storeDescription,
-          'storeLogo': _storeLogoUrl ?? '',
-          'storeName': _storeName,
-        });
-
-        await docRef.update({'idstore': docRef.id});
-
-        _showSuccessDialog(); // Tampilkan pop-up setelah berhasil
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan data: $e')),
-        );
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      _showSuccessDialog(); // Tampilkan pop-up setelah berhasil
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan data: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+}
+
 
   void _showSuccessDialog() {
     showDialog(

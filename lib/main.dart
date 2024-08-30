@@ -11,6 +11,7 @@ import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:biumerch_mobile_app/modul2/tokobaru.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'modul3/splash_screen.dart';
@@ -22,6 +23,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  
+   // Mengunci orientasi ke portrait
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   
   runApp(const MyApp());
 }

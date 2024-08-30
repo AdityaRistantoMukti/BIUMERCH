@@ -13,6 +13,7 @@ class KeranjangPage extends StatefulWidget {
 class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProviderStateMixin {
   List<bool> isCheckedList = [];
   int totalPrice = 0;
+  String _additionalNotes = '';
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
   User? _currentUser;
@@ -115,13 +116,11 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
           }
 
          totalPrice = 0;
-for (int i = 0; i < productDocs.length; i++) {
-  if (isCheckedList[i]) {
-    totalPrice += ((productDocs[i]['productPrice'] as num).toInt()) * ((productDocs[i]['quantity'] as num).toInt());
-  }
-}
-
-
+          for (int i = 0; i < productDocs.length; i++) {
+            if (isCheckedList[i]) {
+              totalPrice += ((productDocs[i]['productPrice'] as num).toInt()) * ((productDocs[i]['quantity'] as num).toInt());
+            }
+          }
           return Stack(
             children: [
               ListView.builder(
@@ -129,11 +128,10 @@ for (int i = 0; i < productDocs.length; i++) {
                 itemCount: productDocs.length,
                 itemBuilder: (context, index) {
                  var productDoc = productDocs[index];
-String productName = productDoc['productName'] ?? '';
-int productPrice = (productDoc['productPrice'] as num).toInt();
-String productImage = productDoc['productImage'] ?? '';
-int quantity = (productDoc['quantity'] as num).toInt();
-
+                  String productName = productDoc['productName'] ?? '';
+                  int productPrice = (productDoc['productPrice'] as num).toInt();
+                  String productImage = productDoc['productImage'] ?? '';
+                  int quantity = (productDoc['quantity'] as num).toInt();
 
                   return SlideTransition(
                     position: _slideAnimation,
@@ -173,15 +171,15 @@ int quantity = (productDoc['quantity'] as num).toInt();
                                     ),
                                   ),
                                    SizedBox(height: 4),
-      if (productDoc['selectedOption'] != null)
-        Text(
-          productDoc['selectedOption'],
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 14, // Smaller font size compared to productName
-            color: Colors.grey[600],
-          ),
-        ),
+                                  if (productDoc['selectedOption'] != null)
+                                    Text(
+                                      productDoc['selectedOption'],
+                                      style: TextStyle(
+                                        fontFamily: 'Nunito',
+                                        fontSize: 14, // Smaller font size compared to productName
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
                                   SizedBox(height: 8),
                                   Text(
                                     'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(productPrice)}',
@@ -333,12 +331,12 @@ int quantity = (productDoc['quantity'] as num).toInt();
                                     }
                                   : null,
                             ).whereType<Map<String, dynamic>>().toList();
-
                             await Navigator.push(
                               context,
                               _createRoute(CheckoutWidget(
                                 checkedItems: checkedItems,
                                 totalPrice: totalPrice,
+                                additionalNotes: _additionalNotes,
                               )),
                             );
                           },
@@ -353,7 +351,6 @@ int quantity = (productDoc['quantity'] as num).toInt();
       ),
     );
   }
-
   void _updateCartQuantity(String docId, int newQuantity) {
     FirebaseFirestore.instance
         .collection('users')
@@ -455,7 +452,6 @@ int quantity = (productDoc['quantity'] as num).toInt();
         ) ??
         false;
   }
-
   Widget _buildQuantityButton(IconData icon, VoidCallback onPressed) {
     return InkWell(
       onTap: onPressed,

@@ -27,11 +27,14 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoggedIn = false;
 
   @override
+  
   void initState() {
     super.initState();
     _checkLoginStatus();
     _loadProfile();
+
   }
+  
 
   Future<void> _checkLoginStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -41,17 +44,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
    Future<void> _loadProfile() async {
-    final userProfile = await fetchUserProfile();
+  final userProfile = await fetchUserProfile();
 
-    if (userProfile != null) {
-      setState(() {
-        _username = userProfile['username'] ?? 'User';
-        _email = userProfile['email'] ?? '';
-        _phone = userProfile['phone'] ?? '';
-        _profileImageUrl = userProfile['profilePicture'];
-      });
-    }
+  if (userProfile != null) {
+    setState(() {
+      _username = userProfile['username'] ?? 'User';
+      _email = userProfile['email'] ?? '';
+      _phone = userProfile['phone'] ?? '';
+      _profileImageUrl = userProfile['profilePicture'];
+    });
   }
+}
+
 
   Future<void> _checkStoreStatus() async {
     // Tampilkan loading overlay dengan warna khusus
@@ -290,16 +294,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           onTap: () {
                             Navigator.pushNamed(context, '/chatpage');
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.store),
-                          title: const Text(
-                            'Toko Baru',
-                            style: TextStyle(color: Color(0xFF194D42)),
-                          ),
-                          onTap: () {
-                            Navigator.pushNamed(context, '/tokobaru');
                           },
                         ),
                         ListTile(

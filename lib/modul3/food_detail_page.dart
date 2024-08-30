@@ -1,5 +1,6 @@
 import 'package:biumerch_mobile_app/modul3/chat_penjual_page.dart';
 import 'package:biumerch_mobile_app/modul4/page_payment/cart.dart';
+import 'package:biumerch_mobile_app/modul4/page_payment/checkout_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,6 +33,8 @@ class _FoodDetailPageState extends State<FoodDetailPage>
     with SingleTickerProviderStateMixin {
   int _quantity = 1;
   String? _selectedOption;
+  String _additionalNotes = ''; 
+
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
@@ -64,6 +67,81 @@ class _FoodDetailPageState extends State<FoodDetailPage>
       ),
     );
   }
+
+// Fungsi - Fungsi
+  // Tambahkan method untuk menyimpan catatan tambahan dari modal
+  void _setAdditionalNotes(String notes) {
+    setState(() {
+      _additionalNotes = notes;
+    });
+  }
+  bool _validateSelection() {
+  if (_selectedOption == null) {
+    _showValidationMessage();
+    return false;
+  }
+  return true;
+}
+
+  void _showValidationMessage() {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text(
+              'Peringatan',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Anda harus memilih salah satu opsi sebelum melanjutkan.',
+          style: TextStyle(
+            color: Colors.black,
+            fontFamily: 'Nunito',
+            fontSize: 16,
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: Color(0xFF707070),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Tutup',
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   Future<void> _addToCart() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -115,6 +193,55 @@ class _FoodDetailPageState extends State<FoodDetailPage>
       Navigator.pushReplacementNamed(context, '/login');
     }
   }
+
+Future<void> _proceedToCheckout(BuildContext context) async {
+  if (!_validateSelection()) {
+    return;
+  }
+
+  User? user = FirebaseAuth.instance.currentUser;
+
+  if (user != null) {
+    final String? imageUrl;
+    if (widget.image is NetworkImage) {
+      imageUrl = (widget.image as NetworkImage).url;
+    } else {
+      imageUrl = null;
+    }
+
+    if (imageUrl != null) {
+      var selectedItems = [
+        {
+          'productName': widget.title,
+          'productPrice': widget.price,
+          'productImage': imageUrl,
+          'quantity': _quantity,
+          'selectedOption': _selectedOption ?? '',
+          'category': widget.category,
+          'storeId': widget.storeId,
+          'additionalNotes': _additionalNotes,
+        }
+      ];
+
+      // Navigate to CheckoutWidget
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckoutWidget(
+            checkedItems: selectedItems,
+            totalPrice: (widget.price * _quantity).toInt(),
+             additionalNotes: _additionalNotes, 
+          ),
+        ),
+      );
+    } else {
+      print('Error: Image URL is null');
+    }
+  } else {
+    Navigator.pushReplacementNamed(context, '/welcome');
+  }
+}
+
 
   @override
   void dispose() {
@@ -298,11 +425,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
                       icon: Icon(Icons.shopping_cart,
                           color: Colors.grey[700], size: screenWidth * 0.07),
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => KeranjangPage()),
-                        );
+                        _showOptionsModal(context); 
                       },
                     ),
                     SizedBox(width: screenWidth * 0.05),
@@ -380,6 +503,17 @@ class _FoodDetailPageState extends State<FoodDetailPage>
       ),
     );
   }
+
+void _showOptionsModal(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) {
+      return _buildBottomSheet2(context);
+    },
+  );
+}
 
   Widget _buildBottomSheet(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -488,6 +622,11 @@ class _FoodDetailPageState extends State<FoodDetailPage>
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
                               ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _additionalNotes = value; // Simpan catatan tambahan
+                                });
+                              },
                             ),
                             SizedBox(height: screenWidth * 0.05),
                             Row(
@@ -540,11 +679,209 @@ class _FoodDetailPageState extends State<FoodDetailPage>
                     padding: EdgeInsets.all(screenWidth * 0.04),
                     child: ElevatedButton(
                       onPressed: () async {
-                        await _addToCart(); // Menyimpan data ke Firestore
-                        Navigator.of(context).pop();
+                        if (_validateSelection()) {
+                          Navigator.of(context).pop(); // Tutup bottom sheet
+                          await _proceedToCheckout(context); // Lanjutkan ke checkout
+                        }
                       },
                       child: Text(
                         "Pesan Sekarang",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: screenWidth * 0.045,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color.fromARGB(255, 98, 231, 3),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.2,
+                            vertical: screenWidth * 0.03),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+Widget _buildBottomSheet2(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return StatefulBuilder(
+      builder: (BuildContext context, StateSetter setState) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
+          builder: (_, controller) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    width: screenWidth * 0.15,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: controller,
+                      child: Padding(
+                        padding: EdgeInsets.all(screenWidth * 0.04),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  child: Image(
+                                    image: widget.image,
+                                    width: screenWidth * 0.15,
+                                    height: screenWidth * 0.15,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.03),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.title,
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.045,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 5),
+                                      Text(
+                                        "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.04,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.03),
+                            Divider(
+                                color: Colors.grey[300], thickness: 1),
+                            SizedBox(height: screenWidth * 0.05),
+                            Text(
+                              "Opsi :",
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.04,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: screenWidth * 0.02),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _buildOptionButton(setState, "Paha Atas"),
+                                _buildOptionButton(setState, "Paha Bawah"),
+                                _buildOptionButton(setState, "Kulit Ayam"),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.05),
+                            Text(
+                              "Catatan Tambahan :",
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.04,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: screenWidth * 0.02),
+                            TextField(
+                              decoration: InputDecoration(
+                                hintText: "Catatan : Bagian paha atas, sambal di pisah",
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _additionalNotes = value; // Simpan catatan tambahan
+                                });
+                              },
+                            ),
+                            SizedBox(height: screenWidth * 0.05),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Jumlah",
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.04,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          if (_quantity > 1) {
+                                            _quantity--;
+                                          }
+                                        });
+                                      },
+                                      icon: Icon(Icons.remove_circle_outline),
+                                    ),
+                                    Text(
+                                      "$_quantity",
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.04,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _quantity++;
+                                        });
+                                      },
+                                      icon: Icon(Icons.add_circle_outline),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: screenWidth * 0.05),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (_validateSelection()) {
+                          Navigator.of(context).pop(); // Tutup bottom sheet
+                          await _addToCart(); // Tambahkan ke keranjang
+                        }
+                      },
+                      child: Text(
+                        "Tambahkan ke keranjang",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: screenWidth * 0.045,
@@ -697,6 +1034,6 @@ class ReviewCard extends StatelessWidget {
             color: Colors.yellow[700], size: screenWidth * 0.04));
       }
     }
-    return Row(children: stars);
+    return Row(children: stars);  
   }
 }
