@@ -49,7 +49,7 @@ class BottomNavigation extends StatelessWidget {
               height: 24,
               color: selectedIndex == 2 ? Colors.black : Colors.grey[400],
             ),
-            label: 'Riwayat',
+            label: 'Pesanan',
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset(

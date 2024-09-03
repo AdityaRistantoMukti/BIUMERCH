@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:biumerch_mobile_app/modul4/page_payment/cart.dart';
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/utils/user_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
@@ -70,8 +71,42 @@ class _LandingPageState extends State<LandingPage> {
     } else {
       _productsFuture = fetchAllProducts(); // Ambil semua produk jika belum login
     }
+    // 
+
+     // Inisialisasi FCM dan dapatkan token
+      FirebaseMessaging.instance.getToken().then((token) {
+        print("FCM Token: $token");
+        saveTokenToDatabase(token);
+      });
+
+     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      RemoteNotification? notification = message.notification;
+      AndroidNotification? android = message.notification?.android;
+
+      if (notification != null && android != null) {
+        showDialog(
+          context: context,
+          builder: (_) {
+            return AlertDialog(
+              title: Text(notification.title ?? ''),
+              content: Text(notification.body ?? ''),
+            );
+          },
+        );
+      }
+    });
+
+      
   }
 
+   void saveTokenToDatabase(String? token) {
+    if (token != null) {
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+      FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'fcmToken': token,
+      });
+    }
+  }
   Future<void> _checkLoginStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
     setState(() {

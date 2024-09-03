@@ -137,6 +137,7 @@ class ProductCard extends StatelessWidget {
               description: product.description,              
               category: product.category,
               storeId: product.storeId,
+               productId: product.id, // Pass productId here
             ),
           ),
         );

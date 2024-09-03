@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/modul3/category_page.dart';
 import 'package:biumerch_mobile_app/modul3/landing_page.dart';
 import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
@@ -77,19 +78,19 @@ class _HalamanPerlengkapanState extends State<HalamanPerlengkapan> with WidgetsB
 
     switch (index) {
       case 0:
-        page = LandingPage();
+        page = BottomNavigation();
         break;
       case 1:
-        page = CategoryPage();
+        page = BottomNavigation(selectedIndex: 1);
         break;
       case 2:
-        page = HistoryPage();
+        page = BottomNavigation(selectedIndex: 2);
         break;
       case 3:
-        page = ProfilePage();
+        page = BottomNavigation(selectedIndex: 3);
         break;
       default:
-        return;
+        page = BottomNavigation();
     }
 
      Navigator.pushReplacement(
@@ -199,7 +200,7 @@ class _HalamanPerlengkapanState extends State<HalamanPerlengkapan> with WidgetsB
                             crossAxisCount: 2,
                             crossAxisSpacing: 10,
                             mainAxisSpacing: 10,
-                            childAspectRatio: 0.58,
+                            childAspectRatio: MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height * 0.80),
                           ),
                           itemCount: _allProducts.length,  // Use _allProducts instead of _filteredProducts here
                           itemBuilder: (context, index) {

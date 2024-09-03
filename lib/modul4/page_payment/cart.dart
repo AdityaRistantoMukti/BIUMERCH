@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../modul1/login.dart';
+import '/modul1.2/data/repositories/authentication/authentication_repository.dart'; // Ganti impor untuk autentikasi
 import 'checkout_widget.dart';
 import 'package:intl/intl.dart';
 
@@ -18,12 +18,23 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
   late Animation<Offset> _slideAnimation;
   User? _currentUser;
 
+
   @override
   void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (ModalRoute.of(context)?.settings.arguments == true) {
+            Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => KeranjangPage()),
+            );
+        }
+    });
     super.initState();
     _animationController = AnimationController(
       duration: Duration(milliseconds: 500),
       vsync: this,
+      
     );
 
     _slideAnimation = Tween<Offset>(
@@ -51,10 +62,8 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
         _currentUser = user;
       });
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-      );
+      // Menggunakan AuthenticationRepository untuk mengelola logika logout dan navigasi
+      await AuthenticationRepository.instance.logout();
     }
   }
 
@@ -115,7 +124,7 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
             isCheckedList = List<bool>.filled(productDocs.length, false);
           }
 
-         totalPrice = 0;
+          totalPrice = 0;
           for (int i = 0; i < productDocs.length; i++) {
             if (isCheckedList[i]) {
               totalPrice += ((productDocs[i]['productPrice'] as num).toInt()) * ((productDocs[i]['quantity'] as num).toInt());
@@ -127,7 +136,7 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
                 padding: EdgeInsets.only(bottom: 150),
                 itemCount: productDocs.length,
                 itemBuilder: (context, index) {
-                 var productDoc = productDocs[index];
+                  var productDoc = productDocs[index];
                   String productName = productDoc['productName'] ?? '';
                   int productPrice = (productDoc['productPrice'] as num).toInt();
                   String productImage = productDoc['productImage'] ?? '';
@@ -170,7 +179,7 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                   SizedBox(height: 4),
+                                  SizedBox(height: 4),
                                   if (productDoc['selectedOption'] != null)
                                     Text(
                                       productDoc['selectedOption'],
@@ -317,20 +326,22 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
                             minimumSize: Size(200, 50),
                           ),
                           onPressed: () async {
-                            var checkedItems = List.generate(
-                              productDocs.length,
-                              (index) => isCheckedList[index]
-                                  ? {
-                                      'productName': productDocs[index]['productName'],
-                                      'productPrice': productDocs[index]['productPrice'],
-                                      'productImage': productDocs[index]['productImage'],
-                                      'quantity': productDocs[index]['quantity'],
-                                      'category': productDocs[index]['category'], // Collect category
-                                      'selectedOption': productDocs[index]['selectedOption'], // Collect selected option
-                                      'storeId': productDocs[index]['storeId'], // Collect store ID
-                                    }
-                                  : null,
-                            ).whereType<Map<String, dynamic>>().toList();
+                          var checkedItems = List.generate(
+  productDocs.length,
+  (index) => isCheckedList[index]
+      ? {
+          'productId': productDocs[index]['productId'],  // Ensure productId is included here
+          'productName': productDocs[index]['productName'],
+          'productPrice': productDocs[index]['productPrice'],
+          'productImage': productDocs[index]['productImage'],
+          'quantity': productDocs[index]['quantity'],
+          'category': productDocs[index]['category'],
+          'selectedOption': productDocs[index]['selectedOption'],
+          'storeId': productDocs[index]['storeId'],
+        }
+      : null,
+).whereType<Map<String, dynamic>>().toList();
+
                             await Navigator.push(
                               context,
                               _createRoute(CheckoutWidget(
@@ -351,6 +362,7 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
       ),
     );
   }
+
   void _updateCartQuantity(String docId, int newQuantity) {
     FirebaseFirestore.instance
         .collection('users')
@@ -452,6 +464,7 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
         ) ??
         false;
   }
+
   Widget _buildQuantityButton(IconData icon, VoidCallback onPressed) {
     return InkWell(
       onTap: onPressed,

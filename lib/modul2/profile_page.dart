@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -26,8 +27,9 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _profileImageUrl;
   bool _isLoggedIn = false;
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   @override
-  
   void initState() {
     super.initState();
     _checkLoginStatus();
@@ -124,11 +126,11 @@ class _ProfilePageState extends State<ProfilePage> {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.clear();
 
+  // Mengeluarkan pengguna dari Google Sign-In
+  await _googleSignIn.signOut();
+
   // Mengeluarkan pengguna dari Firebase Authentication
   await FirebaseAuth.instance.signOut();
-
-  // Clear Cache Data (Tambahkan jika Anda menggunakan cache yang perlu dihapus)
-  // Misalnya: imageCache.clear(); atau lainnya tergantung bagaimana Anda mengimplementasikan caching
 
   // Mengarahkan pengguna ke halaman WelcomePage dan memastikan tidak ada route sebelumnya yang tertinggal
   Navigator.pushAndRemoveUntil(
@@ -137,6 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
     (Route<dynamic> route) => false,
   );
 }
+
 
 
   @override
@@ -150,7 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
           : null,
       body: _isLoggedIn
           ? Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(4.0),
               child: Column(
                 children: [
                   CircleAvatar(
@@ -263,50 +266,53 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.shopping_cart),
-                          title: const Text(
-                            'Keranjang Saya',
-                            style: TextStyle(color: Color(0xFF194D42)),
-                          ),
-                          onTap: () {
-                            // Handle cart navigation
-                          },
+                 Expanded(
+                  child: ListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(), // Disable scrolling
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.shopping_cart),
+                        title: const Text(
+                          'Keranjang Saya',
+                          style: TextStyle(color: Color(0xFF194D42)),
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.receipt),
-                          title: const Text(
-                            'Pesanan Saya',
-                            style: TextStyle(color: Color(0xFF194D42)),
-                          ),
-                          onTap: () {
-                            Navigator.pushNamed(context, '/formatif');
-                          },
+                        onTap: () {
+                          // Handle cart navigation
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.receipt),
+                        title: const Text(
+                          'Riwayat',
+                          style: TextStyle(color: Color(0xFF194D42)),
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.help_center),
-                          title: const Text(
-                            'Pusat Bantuan',
-                            style: TextStyle(color: Color(0xFF194D42)),
-                          ),
-                          onTap: () {
-                            Navigator.pushNamed(context, '/chatpage');
-                          },
+                        onTap: () {
+                          Navigator.pushNamed(context, '/formatif');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.help_center),
+                        title: const Text(
+                          'Pusat Bantuan',
+                          style: TextStyle(color: Color(0xFF194D42)),
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.exit_to_app),
-                          title: const Text(
-                            'Keluar',
-                            style: TextStyle(color: Color(0xFF194D42)),
-                          ),
-                          onTap: _logout,
+                        onTap: () {
+                          Navigator.pushNamed(context, '/chatpage');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.exit_to_app),
+                        title: const Text(
+                          'Keluar',
+                          style: TextStyle(color: Color(0xFF194D42)),
                         ),
-                      ],
-                    ),
+                        onTap: _logout,
+                      ),
+                    ],
                   ),
+                ),
+
                 ],
               ),
             )

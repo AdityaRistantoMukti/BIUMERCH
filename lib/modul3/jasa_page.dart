@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/modul3/category_page.dart';
 import 'package:biumerch_mobile_app/modul3/landing_page.dart';
 import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
@@ -62,19 +63,19 @@ class _HalamanJasaState extends State<HalamanJasa> {
 
     switch (index) {
       case 0:
-        page = LandingPage();
+        page = BottomNavigation();
         break;
       case 1:
-        page = CategoryPage();
+        page = BottomNavigation(selectedIndex: 1);
         break;
       case 2:
-        page = HistoryPage();
+        page = BottomNavigation(selectedIndex: 2);
         break;
       case 3:
-        page = ProfilePage();
+        page = BottomNavigation(selectedIndex: 3);
         break;
       default:
-        return;
+        page = BottomNavigation();
     }
 
      Navigator.pushReplacement(
@@ -181,7 +182,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 5,
                           mainAxisSpacing: 5,
-                          childAspectRatio: 0.62,
+                          childAspectRatio: MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height * 0.80),
                         ),
                         itemCount: _filteredProducts.length,
                         itemBuilder: (context, index) {

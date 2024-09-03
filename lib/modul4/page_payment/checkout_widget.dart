@@ -3,20 +3,19 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'payment_page_qris.dart';
-import '../../modul1/login.dart';
+import '/modul1.2/utils/popups/full_screen_loader.dart'; 
+import '/modul1.2/data/repositories/authentication/authentication_repository.dart'; // Ganti impor untuk autentikasi
 
 class CheckoutWidget extends StatefulWidget {
   final List<Map<String, dynamic>> checkedItems;
   final int totalPrice;
-  final String additionalNotes; // Add this line
-  
-  CheckoutWidget(
-    {
-      required this.checkedItems, 
-      required this.totalPrice,
-      this.additionalNotes = '', // Default to an empty string if not provided
-    }
-    );
+  final String additionalNotes;
+
+  CheckoutWidget({
+    required this.checkedItems,
+    required this.totalPrice,
+    this.additionalNotes = '',
+  });
 
   @override
   _CheckoutWidgetState createState() => _CheckoutWidgetState();
@@ -48,10 +47,8 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
       });
       _fetchCustomerInfo(); // Mengambil informasi pelanggan jika pengguna sudah login
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-      );
+      // Menggunakan AuthenticationRepository untuk mengelola logika logout dan navigasi
+      await AuthenticationRepository.instance.logout();
     }
   }
 
@@ -180,36 +177,35 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
               color: Colors.black,
             ),
             ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: widget.checkedItems.length,
-              itemBuilder: (context, index) {
-                var item = widget.checkedItems[index];
-                int quantity = (item['quantity'] as num).toInt();
-                int productPrice = (item['productPrice'] as num).toInt();
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: widget.checkedItems.length,
+            itemBuilder: (context, index) {
+              var item = widget.checkedItems[index];
+              int quantity = (item['quantity'] as num).toInt();
+              int productPrice = (item['productPrice'] as num).toInt();
 
-                return OrderSummary(
-                  quantity: quantity,
-                  productName: item['productName'],
-                  productPrice: productPrice,
-                  productImage: item['productImage'],
-                  selectedOption: item['selectedOption'], // Pass selectedOption here
-                  onQuantityChanged: (newQuantity) async {
-                    setState(() {
-                      quantities[index] = newQuantity;
-                      item['quantity'] = newQuantity;
-                    });
-                    await _updateCartQuantity(item['productName'], newQuantity);
-                    if (newQuantity == 0) {
-                      bool confirm = await _showConfirmationDialog(context);
-                      if (confirm) {
-                        await _removeItemFromCart(item['productName']);
-                      }
+              return OrderSummary(
+                quantity: quantity,
+                productName: item['productName'],
+                productPrice: productPrice,
+                productImage: item['productImage'],
+                selectedOption: item['selectedOption'], 
+                onQuantityChanged: (newQuantity) async {
+                  setState(() {
+                    item['quantity'] = newQuantity;
+                  });
+                  await _updateCartQuantity(item['productId'], newQuantity); // Pass productId here
+                  if (newQuantity == 0) {
+                    bool confirm = await _showConfirmationDialog(context);
+                    if (confirm) {
+                      await _removeItemFromCart(item['productId']); // Use productId here
                     }
-                  },
-                );
-              },
-            ),
+                  }
+                },
+              );
+            },
+          ),
             Container(
               height: 1,
               color: Colors.black,
@@ -232,31 +228,49 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
               },
             ),
             TotalPrice(totalPrice: _calculateTotalPrice()),
-            PayButton(
-              onPressed: () async {
-                if (paymentMethod == 'Pilih metode pembayaran') {
-                  _showPaymentMethodError(context);
-                  return;
-                }
+        PayButton(
+  onPressed: () async {
+  if (paymentMethod == 'Pilih metode pembayaran') {
+    _showPaymentMethodError(context);
+    return;
+  }
 
-                bool confirmed = await _showOrderConfirmationDialog(context);
-                if (confirmed) {
-                  await _deleteCheckedItemsFromCart();
-                  if (paymentMethod == 'QRIS') {
-                    await Navigator.pushReplacement(
-                      context,
-                      _createRoute(PaymentPageQris(
-                        checkedItems: widget.checkedItems,
-                        totalPrice: _calculateTotalPrice(),
-                        customerName: customerName,
-                        customerPhone: customerPhone,
-                        additionalNotes: _additionalNotes,
-                      )),
-                    );
-                  }
-                }
-              },
-            ),
+  bool confirmed = await _showOrderConfirmationDialog(context);
+  if (confirmed) {
+    await _deleteCheckedItemsFromCart();
+    
+    if (paymentMethod == 'QRIS') {
+      // Tampilkan loading screen
+      TFullScreenLoader.openLoadingDialog('Pembayaran anda sedang dibuat! mohon tunggu sebentar...');
+
+      try {
+        // Simulasikan penundaan untuk pembuatan QRIS
+        await Future.delayed(Duration(seconds: 3)); 
+        
+        // Navigasi ke halaman pembayaran
+        await Navigator.pushReplacement(
+          context,
+          _createRoute(PaymentPageQris(
+            checkedItems: widget.checkedItems,
+            totalPrice: _calculateTotalPrice(),
+            customerName: customerName,
+            customerPhone: customerPhone,
+            additionalNotes: _additionalNotes,
+          )),
+        );
+      } catch (e) {
+        // Tangani error jika perlu
+        print('Error during QRIS generation: $e');
+      } finally {
+        // Tutup loading screen
+        TFullScreenLoader.stopLoading();
+      }
+    }
+  }
+},
+
+),
+
           ],
         ),
       ),
@@ -344,44 +358,43 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
         false;
   }
 
-  Future<void> _updateCartQuantity(String productName, int newQuantity) async {
-    if (_currentUser != null) {
-      var cartSnapshot = await FirebaseFirestore.instance
+Future<void> _updateCartQuantity(String productId, int newQuantity) async {
+  if (_currentUser != null) {
+    var cartSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUser!.uid)
+        .collection('Cart')
+        .where('productId', isEqualTo: productId)  // Ensure productId is used here
+        .get();
+
+    for (var doc in cartSnapshot.docs) {
+      await FirebaseFirestore.instance
           .collection('users')
           .doc(_currentUser!.uid)
           .collection('Cart')
-          .where('productName', isEqualTo: productName)
-          .get();
-
-      for (var doc in cartSnapshot.docs) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(_currentUser!.uid)
-            .collection('Cart')
-            .doc(doc.id)
-            .update({'quantity': newQuantity});
-      }
+          .doc(doc.id)
+          .update({'quantity': newQuantity});
     }
   }
+}
+Future<void> _removeItemFromCart(String productId) async {
+  if (_currentUser != null) {
+    var cartSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUser!.uid)
+        .collection('Cart')
+        .where('productId', isEqualTo: productId)  // Ensure productId is used here
+        .get();
 
-  Future<void> _removeItemFromCart(String productName) async {
-    if (_currentUser != null) {
-      var cartSnapshot = await FirebaseFirestore.instance
+    for (var doc in cartSnapshot.docs) {
+      await FirebaseFirestore.instance
           .collection('users')
           .doc(_currentUser!.uid)
           .collection('Cart')
-          .where('productName', isEqualTo: productName)
-          .get();
-
-      for (var doc in cartSnapshot.docs) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(_currentUser!.uid)
-            .collection('Cart')
-            .doc(doc.id)
-            .delete();
-      }
+          .doc(doc.id)
+          .delete();
     }
+  }
   }
 
   Future<bool> _showOrderConfirmationDialog(BuildContext context) async {
@@ -469,27 +482,27 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
         false;
   }
 
-Future<void> _deleteCheckedItemsFromCart() async {
-  if (_currentUser != null) {
-    for (var item in widget.checkedItems) {
-      var cartSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUser!.uid)
-          .collection('Cart')
-          .where('productName', isEqualTo: item['productName'])
-          .where('selectedOption', isEqualTo: item['selectedOption'])
-          .get();
-      for (var doc in cartSnapshot.docs) {
-        await FirebaseFirestore.instance
+  Future<void> _deleteCheckedItemsFromCart() async {
+    if (_currentUser != null) {
+      for (var item in widget.checkedItems) {
+        var cartSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(_currentUser!.uid)
             .collection('Cart')
-            .doc(doc.id)
-            .delete();
+            .where('productName', isEqualTo: item['productName'])
+            .where('selectedOption', isEqualTo: item['selectedOption'])
+            .get();
+        for (var doc in cartSnapshot.docs) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_currentUser!.uid)
+              .collection('Cart')
+              .doc(doc.id)
+              .delete();
+        }
       }
     }
   }
-}
 
   int _calculateTotalPrice() {
     int totalPrice = 0;
@@ -636,7 +649,7 @@ class OrderSummary extends StatelessWidget {
   final String productName;
   final int productPrice;
   final String productImage;
-  final String? selectedOption; // Add selectedOption as a parameter
+  final String? selectedOption;
   final ValueChanged<int> onQuantityChanged;
 
   OrderSummary({
@@ -645,7 +658,7 @@ class OrderSummary extends StatelessWidget {
     required this.productPrice,
     required this.productImage,
     required this.onQuantityChanged,
-    this.selectedOption, // Initialize selectedOption
+    this.selectedOption,
   });
 
   Future<bool> _showConfirmationDialog(BuildContext context) async {
@@ -791,7 +804,6 @@ class OrderSummary extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 10),
-                  // Add quantity buttons here
                   Row(
                     children: [
                       IconButton(
@@ -832,19 +844,15 @@ class OrderSummary extends StatelessWidget {
   }
 }
 
-
-
 class AdditionalNotes extends StatefulWidget {
   final ValueChanged<String> onNotesChanged;
   final String initialNotes;
 
-  const AdditionalNotes(
-    {
-      super.key, 
-      required this.onNotesChanged,
-      this.initialNotes = ''
-    }
-  );
+  const AdditionalNotes({
+    super.key,
+    required this.onNotesChanged,
+    this.initialNotes = '',
+  });
 
   @override
   _AdditionalNotesState createState() => _AdditionalNotesState();
@@ -853,113 +861,113 @@ class AdditionalNotes extends StatefulWidget {
 class _AdditionalNotesState extends State<AdditionalNotes> {
   late String _notes;
 
-
   @override
-  void initState(){
+  void initState() {
     super.initState();
-    _notes = widget.initialNotes; 
+    _notes = widget.initialNotes;
   }
+
   void _showNotesDialog() async {
-  final String? result = await showDialog<String>(
-    context: context,
-    builder: (BuildContext context) {
-      TextEditingController controller = TextEditingController(text: _notes);
-      return AlertDialog(
-        backgroundColor: const Color(0xFFF8F8F8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
-          'Isi Catatan Tambahan',
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.black,
+    final String? result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        TextEditingController controller = TextEditingController(text: _notes);
+        return AlertDialog(
+          backgroundColor: const Color(0xFFF8F8F8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        content: SingleChildScrollView(  // Tambahkan ini
-          child: TextField(
-            controller: controller,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Catatan: Bagian paha atas, sambal di pisah',
-              hintStyle: TextStyle(
-                color: Colors.grey.shade700,
-                fontFamily: 'Nunito',
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: const Color(0xFFE3E3E3),
-              contentPadding: const EdgeInsets.all(16),
-            ),
-            style: const TextStyle(
+          title: const Text(
+            'Isi Catatan Tambahan',
+            style: TextStyle(
               fontFamily: 'Nunito',
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
               color: Colors.black,
             ),
           ),
-        ),
-        actions: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Expanded(
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 35), // Kurangi padding
-                    backgroundColor: const Color(0xFF707070),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+          content: SingleChildScrollView(
+            child: TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Catatan: Bagian paha atas, sambal di pisah',
+                hintStyle: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontFamily: 'Nunito',
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFE3E3E3),
+                contentPadding: const EdgeInsets.all(16),
+              ),
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                color: Colors.black,
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 35),
+                      backgroundColor: const Color(0xFF707070),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
+                    child: const Text(
+                      'Batal',
+                      style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontSize: 16),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
                   ),
-                  child: const Text(
-                    'Batal',
-                    style: TextStyle(
+                ),
+                SizedBox(width: 5),
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 35),
+                      backgroundColor: const Color(0xFF62E703),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Simpan',
+                      style: TextStyle(
                         fontFamily: 'Nunito',
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        fontSize: 16),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ),
-              SizedBox(width: 5),
-              Expanded(
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 35), // Kurangi padding
-                    backgroundColor: const Color(0xFF62E703),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                        fontSize: 16,
+                      ),
                     ),
+                    onPressed: () {
+                      Navigator.of(context).pop(controller.text);
+                    },
                   ),
-                  child: const Text(
-                    'Simpan',
-                    style: TextStyle(
-                      fontFamily: 'Nunito',
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop(controller.text);
-                  },
                 ),
-              ),
-            ],
-          ),
-        ],
-     );
-    },
-  );
+              ],
+            ),
+          ],
+        );
+      },
+    );
 
     if (result != null && result.isNotEmpty) {
       setState(() {
@@ -968,7 +976,6 @@ class _AdditionalNotesState extends State<AdditionalNotes> {
       widget.onNotesChanged(_notes);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

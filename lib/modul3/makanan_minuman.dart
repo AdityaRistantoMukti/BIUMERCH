@@ -80,13 +80,13 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
         page = BottomNavigation();
         break;
       case 1:
-        page = CategoryPage();
+        page = BottomNavigation(selectedIndex: 1);
         break;
       case 2:
-        page = HistoryPage();
+        page = BottomNavigation(selectedIndex: 2);
         break;
       case 3:
-        page = ProfilePage();
+        page = BottomNavigation(selectedIndex: 3);
         break;
       default:
         page = BottomNavigation();
@@ -183,7 +183,7 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 2,
                         mainAxisSpacing: 2,
-                        childAspectRatio: 0.63,
+                        childAspectRatio: MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height * 0.80),
                       ),
                       itemCount: _filteredProducts.length,
                       itemBuilder: (context, index) {

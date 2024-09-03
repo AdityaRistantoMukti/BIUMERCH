@@ -17,7 +17,7 @@ class GantiEmailScreen extends StatefulWidget {
 
 class _GantiEmailScreenState extends State<GantiEmailScreen> {
   final TextEditingController _emailController = TextEditingController();
-  bool _obscureText = true; // Untuk mengontrol visibilitas teks
+  bool _isSending = false; // To control loading state
 
   String? _otp;
 
@@ -32,15 +32,15 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
     print('Generated OTP: $_otp');
 
     try {
-      String userId = FirebaseAuth.instance.currentUser!.uid;
-
-      await FirebaseFirestore.instance.collection('otps').doc(userId).set({
+      // Save OTP to Firestore
+      await FirebaseFirestore.instance.collection('otps').doc(widget.userId).set({
         'email': email,
         'otp': _otp,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       print('OTP saved to Firestore');
 
+      // SMTP Server configuration
       final smtpServer = SmtpServer(
         'smtp.mailersend.net',
         port: 587,
@@ -48,12 +48,14 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
         password: 'gmjwwTg6vWgPg34v',
       );
 
+      // Create the email message
       final message = Message()
         ..from = const Address('MS_dGgAjm@trial-z3m5jgrrvyzgdpyo.mlsender.net', 'Your App Name')
         ..recipients.add(email)
         ..subject = 'Your OTP Code'
         ..text = 'Your OTP code is $_otp';
 
+      // Send the email
       final sendReport = await send(message, smtpServer);
       print('OTP sent successfully: $sendReport');
     } on MailerException catch (e) {
@@ -74,12 +76,23 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
       return;
     }
 
+    setState(() {
+      _isSending = true; // Start loading
+    });
+
     await sendOTP(_emailController.text);
+
+    setState(() {
+      _isSending = false; // Stop loading
+    });
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => VerifikasiOTPScreen(email: _emailController.text, userId: FirebaseAuth.instance.currentUser!.uid),
+        builder: (context) => VerifikasiOTPScreen(
+          email: _emailController.text,
+          userId: widget.userId,
+        ),
       ),
     );
   }
@@ -106,7 +119,6 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
             const SizedBox(height: 20),
             TextField(
               controller: _emailController,
-              obscureText: _obscureText, // Mengontrol visibilitas teks
               decoration: InputDecoration(
                 labelText: 'Masukkan Email Baru',
                 labelStyle: const TextStyle(
@@ -126,17 +138,6 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
                 fillColor: Colors.grey[200],
                 filled: true,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.grey,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                ),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -144,7 +145,7 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _onLanjutPressed,
+                onPressed: _isSending ? null : _onLanjutPressed, // Disable button during loading
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00C853),
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -152,15 +153,19 @@ class _GantiEmailScreenState extends State<GantiEmailScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  'Lanjut',
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontWeight: FontWeight.w800, // Nunito Extra Bold
-                    fontSize: 20,
-                    color: Color(0xFFFFFFFF),
-                  ),
-                ),
+                child: _isSending
+                    ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                    : const Text(
+                        'Lanjut',
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontWeight: FontWeight.w800, // Nunito Extra Bold
+                          fontSize: 20,
+                          color: Color(0xFFFFFFFF),
+                        ),
+                      ),
               ),
             ),
           ],

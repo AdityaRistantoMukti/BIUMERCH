@@ -63,8 +63,8 @@ class _LoginPageState extends State<LoginPage> {
         context,
         MaterialPageRoute(
           builder: (context) => VerificationPage(
-            verificationId: confirmationResult.verificationId,
-            phone: phoneNumber,
+            verification: confirmationResult.verificationId,
+            phone: phoneNumber, email: '', verificationId: '',
           ),
         ),
       );
@@ -80,88 +80,92 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _signInWithGoogle() async {
-    try {
-      // Attempt to sign in with Google
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign-In was cancelled')),
-        );
-        return;
-      }
-
-      // Authenticate with Firebase
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+  try {
+    // Sign out from any previous Google account (ensures account selection on next sign-in)
+    await _googleSignIn.signOut();
+    // Attempt to sign in with Google
+    final googleUser = await _googleSignIn.signIn();
+    
+    if (googleUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google Sign-In was cancelled')),
       );
+      return;
+    }
 
-      // Sign in to Firebase with the Google [UserCredential]
-      final userCredential = await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user;
+    // Authenticate with Firebase
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
-      if (user != null) {
-        // Check if user is new
-        final DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-          // If the user is new, save their information to Firestore
-          await _firestore.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'username': user.displayName ?? 'Anonymous',
-            'createdAt': FieldValue.serverTimestamp(),
-            'balance': 0, // Set initial balance to 0
-            'idUser': user.uid, // Set idUser to the same as the document ID
-            'phone': '', // Set phoneNumber to empty string
-            'profilePicture': '', // Set profilePicture to empty string
-          });
+    // Sign in to Firebase with the Google [UserCredential]
+    final userCredential = await _auth.signInWithCredential(credential);
+    final User? user = userCredential.user;
 
-         // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
-          List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
+    if (user != null) {
+      // Cek apakah pengguna baru
+      final DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
+        // Jika pengguna baru, simpan informasi mereka ke Firestore
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email,
+          'username': user.displayName ?? 'Anonymous',
+          'createdAt': FieldValue.serverTimestamp(),
+          'balance': 0, // Set initial balance to 0
+          'idUser': user.uid, // Set idUser to the same as the document ID
+          'phone': '', // Set phoneNumber to empty string
+          'profilePicture': '', // Set profilePicture to empty string
+        });
 
-          await _firestore.collection('users').doc(user.uid)
-              .collection('categoryVisits')
-              .get()
-              .then((snapshot) async {
-            if (snapshot.docs.isEmpty) {
-              // Jika sub-koleksi 'categoryVisits' kosong, tambahkan dokumen dengan nama kategori
-              for (String category in categories) {
-                await _firestore.collection('users').doc(user.uid)
-                    .collection('categoryVisits').doc(category).set({
-                  'category': category,
-                  'visitCount': 0,
-                  'timestamp': FieldValue.serverTimestamp(),
-                });
-              }
-              print("Category visits collection created with initial categories for user ${user.uid}");
-            } else {
-              print("Category visits collection already exists for user ${user.uid}");
+        // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
+        List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
+
+        await _firestore.collection('users').doc(user.uid)
+            .collection('categoryVisits')
+            .get()
+            .then((snapshot) async {
+          if (snapshot.docs.isEmpty) {
+            // Jika sub-koleksi 'categoryVisits' kosong, tambahkan dokumen dengan nama kategori
+            for (String category in categories) {
+              await _firestore.collection('users').doc(user.uid)
+                  .collection('categoryVisits').doc(category).set({
+                'category': category,
+                'visitCount': 0,
+                'timestamp': FieldValue.serverTimestamp(),
+              });
             }
-          });
-        }
-
-        // Save login status
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-
-        // Navigate to landing page
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BottomNavigation(),
-          ),
-        );
+            print("Category visits collection created with initial categories for user ${user.uid}");
+          } else {
+            print("Category visits collection already exists for user ${user.uid}");
+          }
+        });
       }
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed: ${e.message}')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed: ${e.toString()}')),
+
+      // Save login status
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
+      // Navigate to landing page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BottomNavigation(),
+        ),
       );
     }
+  } on FirebaseAuthException catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Google Sign-In failed: ${e.message}')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Google Sign-In failed: ${e.toString()}')),
+    );
   }
+}
+
 
   void _navigateToForgotPassword() {
     Navigator.push(

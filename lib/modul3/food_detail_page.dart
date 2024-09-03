@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class FoodDetailPage extends StatefulWidget {
   final ImageProvider image;
   final String title;
+  final String productId;  // Add this line
   final double price;
   final double rating;
   final String description;
@@ -23,6 +24,7 @@ class FoodDetailPage extends StatefulWidget {
     required this.description,
     required this.category,
     required this.storeId,
+    required this.productId,
   });
 
   @override
@@ -75,14 +77,89 @@ class _FoodDetailPageState extends State<FoodDetailPage>
       _additionalNotes = notes;
     });
   }
-  bool _validateSelection() {
-  if (_selectedOption == null) {
-    _showValidationMessage();
-    return false;
-  }
-  return true;
-}
+  // End  
+  // Fungsi validasi user ingin chat dengan penjual
+  void _showChatConfirmationDialog(BuildContext context, DocumentReference roomRef, String roomId, String buyerUID, String sellerUID) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Hubungi Penjual"),
+          content: Text("Apakah Anda ingin menghubungi penjual terkait produk ini?"),
+          actions: <Widget>[
+            TextButton(
+              child: Text("Tidak"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Tutup dialog
+              },
+            ),
+            TextButton(
+              child: Text("Ya"),
+              onPressed: () async {
+                Navigator.of(context).pop(); // Tutup dialog
 
+                // Buat room baru di Firestore
+                await roomRef.set({
+                  'buyerUID': buyerUID,
+                  'sellerUID': sellerUID,
+                  'lastMessage': '',
+                  'lastMessageTimestamp': Timestamp.now(),
+                });
+
+                // Arahkan ke halaman chat
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HalamanChatPenjual(
+                      roomId: roomId, 
+                      buyerUID: buyerUID, 
+                      sellerUID: sellerUID,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 
+   void _startChatWithSeller() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      String buyerUID = user.uid;
+      String sellerUID = widget.storeId; // Menggunakan storeId sebagai UID penjual
+      String roomId = 'room_${buyerUID}_$sellerUID';
+      DocumentReference roomRef = FirebaseFirestore.instance.collection('rooms').doc(roomId);
+
+      // Cek apakah room sudah ada
+      DocumentSnapshot roomSnapshot = await roomRef.get();
+      if (!roomSnapshot.exists) {
+        // Jika room belum ada, tampilkan dialog konfirmasi
+        _showChatConfirmationDialog(context, roomRef, roomId, buyerUID, sellerUID);
+      } else {
+        // Jika room sudah ada, langsung buka halaman chat
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HalamanChatPenjual(
+              roomId: roomId, 
+              buyerUID: buyerUID, 
+              sellerUID: sellerUID,
+            ),
+          ),
+        );
+      }
+    } else {
+      // Jika user belum login, arahkan ke halaman login
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+// End
+// Validasi user memilih Opsi Menu
   void _showValidationMessage() {
   showDialog(
     context: context,
@@ -141,8 +218,17 @@ class _FoodDetailPageState extends State<FoodDetailPage>
     },
   );
 }
+// 
 
-
+  bool _validateSelection() {
+  if (_selectedOption == null) {
+    _showValidationMessage();
+    return false;
+  }
+  return true;
+}
+// End
+// Fungsi Memasukkan produk ke keranjang
   Future<void> _addToCart() async {
     User? user = FirebaseAuth.instance.currentUser;
 
@@ -174,6 +260,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
           });
         } else {
           await cart.add({
+            'productId': widget.productId,  // Now productId is defined
             'productName': widget.title,
             'productPrice': widget.price,
             'productImage': imageUrl,
@@ -190,14 +277,60 @@ class _FoodDetailPageState extends State<FoodDetailPage>
         print('Error: Image URL is null');
       }
     } else {
-      Navigator.pushReplacementNamed(context, '/login');
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            title: Column(
+              mainAxisSize: MainAxisSize.min, // Menyesuaikan ukuran kolom agar tidak terlalu tinggi
+              children: [
+                Icon(
+                  Icons.warning,
+                  color: Colors.red,
+                  size: 40.0, // Mengatur ukuran ikon
+                ),
+                SizedBox(height: 8.0), // Jarak antara ikon dan teks
+                Text(
+                  "Silahkan Login Terlebih Dahulu",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18.0, // Mengatur ukuran font
+                  ),
+                  textAlign: TextAlign.center, // Menyelaraskan teks ke tengah
+                ),
+              ],
+            ),
+           
+            actions: <Widget>[
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey,
+                ),
+                child: Text("Batal"),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Tutup dialog
+                },
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.green,
+                ),
+                child: Text("Login"),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Tutup dialog
+                  Navigator.pushReplacementNamed(context, '/login'); // Arahkan ke halaman login
+                },
+              ),
+            ],
+          );
+        },
+      );
     }
   }
-
+// Tutuo
+// Fungsi Mengirim data produk ke halaman checkout
 Future<void> _proceedToCheckout(BuildContext context) async {
-  if (!_validateSelection()) {
-    return;
-  }
 
   User? user = FirebaseAuth.instance.currentUser;
 
@@ -212,6 +345,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
     if (imageUrl != null) {
       var selectedItems = [
         {
+          'productId': widget.productId,  // Now productId is defined
           'productName': widget.title,
           'productPrice': widget.price,
           'productImage': imageUrl,
@@ -238,11 +372,61 @@ Future<void> _proceedToCheckout(BuildContext context) async {
       print('Error: Image URL is null');
     }
   } else {
-    Navigator.pushReplacementNamed(context, '/welcome');
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            title: Column(
+              mainAxisSize: MainAxisSize.min, // Menyesuaikan ukuran kolom agar tidak terlalu tinggi
+              children: [
+                Icon(
+                  Icons.warning,
+                  color: Colors.red,
+                  size: 40.0, // Mengatur ukuran ikon
+                ),
+                SizedBox(height: 8.0), // Jarak antara ikon dan teks
+                Text(
+                  "Silahkan Login Terlebih Dahulu",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18.0, // Mengatur ukuran font
+                  ),
+                  textAlign: TextAlign.center, // Menyelaraskan teks ke tengah
+                ),
+              ],
+            ),
+           
+            actions: <Widget>[
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey,
+                ),
+                child: Text("Batal"),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Tutup dialog
+                },
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.green,
+                ),
+                child: Text("Login"),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Tutup dialog
+                  Navigator.pushReplacementNamed(context, '/login'); // Arahkan ke halaman login
+                },
+              ),
+            ],
+          );
+        },
+      );
   }
 }
+// Tutup
 
 
+// Code inti
   @override
   void dispose() {
     _animationController.dispose();
@@ -414,11 +598,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                       icon: Icon(Icons.chat,
                           color: Colors.grey[700], size: screenWidth * 0.07),
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => HalamanChatPenjual()),
-                        );
+                        _startChatWithSeller();
                       },
                     ),
                     IconButton(
@@ -516,396 +696,345 @@ void _showOptionsModal(BuildContext context) {
 }
 
   Widget _buildBottomSheet(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+  final screenWidth = MediaQuery.of(context).size.width;
 
-    return StatefulBuilder(
-      builder: (BuildContext context, StateSetter setState) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          minChildSize: 0.3,
-          maxChildSize: 0.8,
-          builder: (_, controller) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+  return StatefulBuilder(
+    builder: (BuildContext context, StateSetter setState) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth * 0.04),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,  // Mengatur tinggi berdasarkan isi
+            children: <Widget>[
+              Container(
+                width: screenWidth * 0.15,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    width: screenWidth * 0.15,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image(
+                      image: widget.image,
+                      width: screenWidth * 0.15,
+                      height: screenWidth * 0.15,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(width: screenWidth * 0.03),
                   Expanded(
-                    child: SingleChildScrollView(
-                      controller: controller,
-                      child: Padding(
-                        padding: EdgeInsets.all(screenWidth * 0.04),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  child: Image(
-                                    image: widget.image,
-                                    width: screenWidth * 0.15,
-                                    height: screenWidth * 0.15,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                SizedBox(width: screenWidth * 0.03),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        widget.title,
-                                        style: TextStyle(
-                                          fontSize: screenWidth * 0.045,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
-                                        style: TextStyle(
-                                          fontSize: screenWidth * 0.04,
-                                          color: Colors.grey[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: screenWidth * 0.03),
-                            Divider(
-                                color: Colors.grey[300], thickness: 1),
-                            SizedBox(height: screenWidth * 0.05),
-                            Text(
-                              "Opsi :",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: screenWidth * 0.02),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _buildOptionButton(setState, "Paha Atas"),
-                                _buildOptionButton(setState, "Paha Bawah"),
-                                _buildOptionButton(setState, "Kulit Ayam"),
-                              ],
-                            ),
-                            SizedBox(height: screenWidth * 0.05),
-                            Text(
-                              "Catatan Tambahan :",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: screenWidth * 0.02),
-                            TextField(
-                              decoration: InputDecoration(
-                                hintText: "Catatan : Bagian paha atas, sambal di pisah",
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _additionalNotes = value; // Simpan catatan tambahan
-                                });
-                              },
-                            ),
-                            SizedBox(height: screenWidth * 0.05),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Jumlah",
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.04,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          if (_quantity > 1) {
-                                            _quantity--;
-                                          }
-                                        });
-                                      },
-                                      icon: Icon(Icons.remove_circle_outline),
-                                    ),
-                                    Text(
-                                      "$_quantity",
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.04,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _quantity++;
-                                        });
-                                      },
-                                      icon: Icon(Icons.add_circle_outline),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: screenWidth * 0.05),
-                          ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.045,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(screenWidth * 0.04),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (_validateSelection()) {
-                          Navigator.of(context).pop(); // Tutup bottom sheet
-                          await _proceedToCheckout(context); // Lanjutkan ke checkout
-                        }
-                      },
-                      child: Text(
-                        "Pesan Sekarang",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: screenWidth * 0.045,
+                        SizedBox(height: 5),
+                        Text(
+                          "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            color: Colors.grey[700],
+                          ),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color.fromARGB(255, 98, 231, 3),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.2,
-                            vertical: screenWidth * 0.03),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+              SizedBox(height: screenWidth * 0.03),
+              Divider(color: Colors.grey[300], thickness: 1),
+              // SizedBox(height: screenWidth * 0.05),
+              // Text(
+              //     "Opsi :",
+              //       style: TextStyle(
+              //       fontSize: screenWidth * 0.04,
+              //       fontWeight: FontWeight.bold,
+              //     ),
+              //  ),
+              // SizedBox(height: screenWidth * 0.02),
+              //   Row(
+              //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              //     children: [
+              //     _buildOptionButton(setState, "Paha Atas"),
+              //     _buildOptionButton(setState, "Paha Bawah"),
+              //     _buildOptionButton(setState, "Kulit Ayam"),
+              //     ],
+              // ),                                                      
+              SizedBox(height: screenWidth * 0.05),
+              Text(
+                "Catatan Tambahan :",
+                style: TextStyle(
+                  fontSize: screenWidth * 0.04,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: screenWidth * 0.02),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Catatan : Bagian paha atas, sambal di pisah",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _additionalNotes = value; // Simpan catatan tambahan
+                  });
+                },
+              ),
+              SizedBox(height: screenWidth * 0.05),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Jumlah",
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.04,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            if (_quantity > 1) {
+                              _quantity--;
+                            }
+                          });
+                        },
+                        icon: Icon(Icons.remove_circle_outline),
+                      ),
+                      Text(
+                        "$_quantity",
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.04,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _quantity++;
+                          });
+                        },
+                        icon: Icon(Icons.add_circle_outline),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: screenWidth * 0.05),
+              ElevatedButton(
+                onPressed: () async {
+                  // if (_validateSelection()) {
+                  // }
+                    Navigator.of(context).pop(); // Tutup bottom sheet
+                    await _proceedToCheckout(context); // Lanjutkan ke checkout
+                },
+                child: Text(
+                  "Pesan Sekarang",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenWidth * 0.045,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromARGB(255, 98, 231, 3),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.29,
+                      vertical: screenWidth * 0.03),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
 Widget _buildBottomSheet2(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+  final screenWidth = MediaQuery.of(context).size.width;
 
-    return StatefulBuilder(
-      builder: (BuildContext context, StateSetter setState) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          minChildSize: 0.3,
-          maxChildSize: 0.8,
-          builder: (_, controller) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+  return StatefulBuilder(
+    builder: (BuildContext context, StateSetter setState) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth * 0.04),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,  // Menyesuaikan tinggi dengan isi
+            children: <Widget>[
+              Container(
+                width: screenWidth * 0.15,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    width: screenWidth * 0.15,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image(
+                      image: widget.image,
+                      width: screenWidth * 0.15,
+                      height: screenWidth * 0.15,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(width: screenWidth * 0.03),
                   Expanded(
-                    child: SingleChildScrollView(
-                      controller: controller,
-                      child: Padding(
-                        padding: EdgeInsets.all(screenWidth * 0.04),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  child: Image(
-                                    image: widget.image,
-                                    width: screenWidth * 0.15,
-                                    height: screenWidth * 0.15,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                SizedBox(width: screenWidth * 0.03),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        widget.title,
-                                        style: TextStyle(
-                                          fontSize: screenWidth * 0.045,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
-                                        style: TextStyle(
-                                          fontSize: screenWidth * 0.04,
-                                          color: Colors.grey[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: screenWidth * 0.03),
-                            Divider(
-                                color: Colors.grey[300], thickness: 1),
-                            SizedBox(height: screenWidth * 0.05),
-                            Text(
-                              "Opsi :",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: screenWidth * 0.02),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _buildOptionButton(setState, "Paha Atas"),
-                                _buildOptionButton(setState, "Paha Bawah"),
-                                _buildOptionButton(setState, "Kulit Ayam"),
-                              ],
-                            ),
-                            SizedBox(height: screenWidth * 0.05),
-                            Text(
-                              "Catatan Tambahan :",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: screenWidth * 0.02),
-                            TextField(
-                              decoration: InputDecoration(
-                                hintText: "Catatan : Bagian paha atas, sambal di pisah",
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _additionalNotes = value; // Simpan catatan tambahan
-                                });
-                              },
-                            ),
-                            SizedBox(height: screenWidth * 0.05),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Jumlah",
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.04,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          if (_quantity > 1) {
-                                            _quantity--;
-                                          }
-                                        });
-                                      },
-                                      icon: Icon(Icons.remove_circle_outline),
-                                    ),
-                                    Text(
-                                      "$_quantity",
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.04,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _quantity++;
-                                        });
-                                      },
-                                      icon: Icon(Icons.add_circle_outline),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: screenWidth * 0.05),
-                          ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.045,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(screenWidth * 0.04),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (_validateSelection()) {
-                          Navigator.of(context).pop(); // Tutup bottom sheet
-                          await _addToCart(); // Tambahkan ke keranjang
-                        }
-                      },
-                      child: Text(
-                        "Tambahkan ke keranjang",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: screenWidth * 0.045,
+                        SizedBox(height: 5),
+                        Text(
+                          "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            color: Colors.grey[700],
+                          ),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color.fromARGB(255, 98, 231, 3),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.2,
-                            vertical: screenWidth * 0.03),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+              SizedBox(height: screenWidth * 0.03),
+              Divider(color: Colors.grey[300], thickness: 1),
+              SizedBox(height: screenWidth * 0.05),
+              Text(
+                "Catatan Tambahan :",
+                style: TextStyle(
+                  fontSize: screenWidth * 0.04,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: screenWidth * 0.02),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Catatan : Bagian paha atas, sambal di pisah",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _additionalNotes = value; // Simpan catatan tambahan
+                  });
+                },
+              ),
+              SizedBox(height: screenWidth * 0.05),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Jumlah",
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.04,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            if (_quantity > 1) {
+                              _quantity--;
+                            }
+                          });
+                        },
+                        icon: Icon(Icons.remove_circle_outline),
+                      ),
+                      Text(
+                        "$_quantity",
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.04,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _quantity++;
+                          });
+                        },
+                        icon: Icon(Icons.add_circle_outline),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: screenWidth * 0.05),  
+              Padding(
+                padding: EdgeInsets.only(bottom: screenWidth * 0.04),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    // if (_validateSelection()) {
+                    // }
+                      Navigator.of(context).pop(); // Tutup bottom sheet
+                      await _addToCart(); // Tambahkan ke keranjang
+                  },
+                  child: Text(
+                    "Tambahkan ke keranjang",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screenWidth * 0.045,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color.fromARGB(255, 98, 231, 3),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.2,
+                        vertical: screenWidth * 0.03),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
 
  Widget _buildOptionButton(StateSetter setState, String label) {
   final screenWidth = MediaQuery.of(context).size.width;

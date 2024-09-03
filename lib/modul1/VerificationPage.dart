@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math';
+import 'package:flutter/services.dart';
 
 class VerificationPage extends StatefulWidget {
-  final String verificationId;
-  final String phone;
+  final String email;
 
-  VerificationPage({required this.verificationId, required this.phone});
+  VerificationPage({required this.email, required String verification, required String phone, required String verificationId});
 
   @override
   _VerificationPageState createState() => _VerificationPageState();
@@ -13,23 +14,51 @@ class VerificationPage extends StatefulWidget {
 
 class _VerificationPageState extends State<VerificationPage> {
   final _otpController = TextEditingController();
-  bool _isResendButtonEnabled = true; // State untuk tombol kirim ulang
+  bool _isResendButtonEnabled = true;
+  String? _generatedOtp; // OTP yang dihasilkan
 
-  void _verifyOtp() async {
+  @override
+  void initState() {
+    super.initState();
+    _sendOtpToEmail(); // Kirim OTP saat halaman pertama kali dimuat
+  }
+
+  void _sendOtpToEmail() async {
+    setState(() {
+      _isResendButtonEnabled = false;
+    });
+
+    // Menghasilkan OTP secara acak
+    _generatedOtp = _generateOtp();
+
     try {
-      // Mendapatkan kredensial dengan OTP yang dimasukkan
-      final credential = PhoneAuthProvider.credential(
-        verificationId: widget.verificationId,
-        smsCode: _otpController.text,
+      // Di sini Anda bisa menggunakan layanan email untuk mengirim OTP
+      // Contoh sederhana menggunakan clipboard (untuk pengujian)
+      Clipboard.setData(ClipboardData(text: _generateOtp()));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('OTP telah dikirim ke email: ${widget.email}')),
       );
-
-      // Menyelesaikan proses login menggunakan kredensial
-      await FirebaseAuth.instance.signInWithCredential(credential);
-
-      // Navigasi ke halaman verifikasi sukses
-      Navigator.pushReplacementNamed(context, '/verification-success');
     } catch (e) {
-      // Tangani kesalahan jika verifikasi gagal
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim OTP')),
+      );
+    } finally {
+      setState(() {
+        _isResendButtonEnabled = true;
+      });
+    }
+  }
+
+  String _generateOtp() {
+    final random = Random();
+    final otp = random.nextInt(900000) + 100000; // Menghasilkan OTP 6 digit
+    return otp.toString();
+  }
+
+  void _verifyOtp() {
+    if (_otpController.text == _generatedOtp) {
+      Navigator.pushReplacementNamed(context, '/verification-success');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Kode OTP tidak valid')),
       );
@@ -37,29 +66,7 @@ class _VerificationPageState extends State<VerificationPage> {
   }
 
   void _resendOtp() async {
-    setState(() {
-      _isResendButtonEnabled = false;
-    });
-
-    // Mengirim ulang kode OTP
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: widget.phone,
-      verificationCompleted: (PhoneAuthCredential credential) {},
-      verificationFailed: (FirebaseAuthException e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengirim ulang kode OTP')),
-        );
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        setState(() {
-          _isResendButtonEnabled = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kode OTP telah dikirim ulang')),
-        );
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
+    _sendOtpToEmail();
   }
 
   @override
@@ -95,7 +102,7 @@ class _VerificationPageState extends State<VerificationPage> {
                   ),
                   SizedBox(height: 10.0),
                   Text(
-                    'Kode OTP telah dikirim ke ${widget.phone}',
+                    'Kode OTP telah dikirim ke ${widget.email}',
                     style: TextStyle(
                       fontSize: 16.0,
                       color: Colors.black,

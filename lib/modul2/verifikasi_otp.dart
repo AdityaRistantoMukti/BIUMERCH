@@ -48,12 +48,12 @@ class _VerifikasiOTPScreenState extends State<VerifikasiOTPScreen> {
     final smtpServer = SmtpServer(
       'smtp.mailersend.net',
       port: 587,
-      username: 'MS_dGgAjm@trial-z3m5jgrrvyzgdpyo.mlsender.net',
-      password: 'gmjwwTg6vWgPg34v',
+      username: 'MS_8WNEtY@trial-0p7kx4xejqmg9yjr.mlsender.net',
+      password: 'Zo2fPMyr8J2Akpx6',
     );
 
     final message = Message()
-      ..from = const Address('MS_dGgAjm@trial-z3m5jgrrvyzgdpyo.mlsender.net', 'Your App Name')
+      ..from = const Address('MS_8WNEtY@trial-0p7kx4xejqmg9yjr.mlsender.net', 'Your App Name')
       ..recipients.add(widget.email)
       ..subject = 'Your OTP Code'
       ..text = 'Your OTP code is $otp';
