@@ -1,16 +1,10 @@
 import 'package:biumerch_mobile_app/modul1/WelcomePage.dart';
-import 'package:biumerch_mobile_app/modul3/category_page.dart';
-import 'package:biumerch_mobile_app/modul2/chat_page.dart';
 import 'package:biumerch_mobile_app/modul2/edit_profile_page.dart';
-import 'package:biumerch_mobile_app/modul3/landing_page.dart';
-import 'package:biumerch_mobile_app/modul1/login.dart';
 import 'package:biumerch_mobile_app/modul2/penjual_toko.dart';
 import 'package:biumerch_mobile_app/utils/user_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -27,16 +21,12 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _profileImageUrl;
   bool _isLoggedIn = false;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-
   @override
   void initState() {
     super.initState();
     _checkLoginStatus();
     _loadProfile();
-
   }
-  
 
   Future<void> _checkLoginStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -45,22 +35,20 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
-   Future<void> _loadProfile() async {
-  final userProfile = await fetchUserProfile();
+  Future<void> _loadProfile() async {
+    final userProfile = await fetchUserProfile();
 
-  if (userProfile != null) {
-    setState(() {
-      _username = userProfile['username'] ?? 'User';
-      _email = userProfile['email'] ?? '';
-      _phone = userProfile['phone'] ?? '';
-      _profileImageUrl = userProfile['profilePicture'];
-    });
+    if (userProfile != null) {
+      setState(() {
+        _username = userProfile['username'] ?? 'User';
+        _email = userProfile['email'] ?? '';
+        _phone = userProfile['phone'] ?? '';
+        _profileImageUrl = userProfile['profilePicture'];
+      });
+    }
   }
-}
-
 
   Future<void> _checkStoreStatus() async {
-    // Tampilkan loading overlay dengan warna khusus
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -81,21 +69,19 @@ class _ProfilePageState extends State<ProfilePage> {
             .where('ownerId', isEqualTo: user.uid)
             .get();
 
-        Navigator.pop(context); // Tutup loading overlay
+        Navigator.pop(context);
 
         if (storeSnapshot.docs.isNotEmpty) {
-          // Pengguna sudah memiliki toko
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => SellerProfileScreen(storeId: storeSnapshot.docs.first.id)),
           );
         } else {
-          // Pengguna belum memiliki toko
           Navigator.pushNamed(context, '/tokobaru');
         }
       }
     } catch (e) {
-      Navigator.pop(context); // Tutup loading overlay jika terjadi error
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal memeriksa status toko')),
       );
@@ -121,26 +107,46 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _confirmLogout() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Keluar'),
+          content: const Text('Apakah Anda yakin ingin keluar?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logout();
+              },
+              child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _logout() async {
-  // Hapus semua data di SharedPreferences
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.clear();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
 
-  // Mengeluarkan pengguna dari Google Sign-In
-  await _googleSignIn.signOut();
+    await FirebaseAuth.instance.signOut();
 
-  // Mengeluarkan pengguna dari Firebase Authentication
-  await FirebaseAuth.instance.signOut();
-
-  // Mengarahkan pengguna ke halaman WelcomePage dan memastikan tidak ada route sebelumnya yang tertinggal
-  Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (context) => WelcomePage()),
-    (Route<dynamic> route) => false,
-  );
-}
-
-
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => WelcomePage()),
+      (Route<dynamic> route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -266,53 +272,42 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
-                 Expanded(
-                  child: ListView(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.shopping_cart),
-                        title: const Text(
-                          'Keranjang Saya',
-                          style: TextStyle(color: Color(0xFF194D42)),
+                  Expanded(
+                    child: ListView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(), // Disable scrolling
+                      children: [                        
+                        ListTile(
+                          leading: const Icon(Icons.receipt),
+                          title: const Text(
+                            'Riwayat Pesanan',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/riwayat');
+                          },
                         ),
-                        onTap: () {
-                          // Handle cart navigation
-                        },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.receipt),
-                        title: const Text(
-                          'Riwayat',
-                          style: TextStyle(color: Color(0xFF194D42)),
+                        ListTile(
+                          leading: const Icon(Icons.help_center),
+                          title: const Text(
+                            'Pusat Bantuan',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/chatpage');
+                          },
                         ),
-                        onTap: () {
-                          Navigator.pushNamed(context, '/formatif');
-                        },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.help_center),
-                        title: const Text(
-                          'Pusat Bantuan',
-                          style: TextStyle(color: Color(0xFF194D42)),
+                        ListTile(
+                          leading: const Icon(Icons.exit_to_app),
+                          title: const Text(
+                            'Keluar',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: _confirmLogout,
                         ),
-                        onTap: () {
-                          Navigator.pushNamed(context, '/chatpage');
-                        },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.exit_to_app),
-                        title: const Text(
-                          'Keluar',
-                          style: TextStyle(color: Color(0xFF194D42)),
-                        ),
-                        onTap: _logout,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-
                 ],
               ),
             )
@@ -339,3 +334,5 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
+
+

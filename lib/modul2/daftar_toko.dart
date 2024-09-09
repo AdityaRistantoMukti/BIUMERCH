@@ -4,7 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:flutter/services.dart';
 
 class DaftarTokoPage extends StatefulWidget {
   const DaftarTokoPage({super.key});
@@ -46,48 +46,47 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
   }
 
   Future<void> _registerStore() async {
-  if (_formKey.currentState!.validate()) {
-    _formKey.currentState!.save();
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (_selectedImage != null) {
-        await _uploadImage(_selectedImage!);
-      }
-
-      // Ambil user ID dari pengguna yang sudah login
-      String ownerId = FirebaseAuth.instance.currentUser!.uid;
-
-      DocumentReference docRef = await FirebaseFirestore.instance.collection('stores').add({
-        'approved': false,
-        'email': _email,
-        'idstore': '',
-        'ownerId': ownerId,
-        'phoneNumber': _phoneNumber,
-        'product': [],
-        'storeDescription': _storeDescription,
-        'storeLogo': _storeLogoUrl ?? '',
-        'storeName': _storeName,
-      });
-
-      await docRef.update({'idstore': docRef.id});
-
-      _showSuccessDialog(); // Tampilkan pop-up setelah berhasil
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan data: $e')),
-      );
-    } finally {
       setState(() {
-        _isLoading = false;
+        _isLoading = true;
       });
+
+      try {
+        if (_selectedImage != null) {
+          await _uploadImage(_selectedImage!);
+        }
+
+        // Ambil user ID dari pengguna yang sudah login
+        String ownerId = FirebaseAuth.instance.currentUser!.uid;
+
+        DocumentReference docRef = await FirebaseFirestore.instance.collection('stores').add({
+          'approved': false,
+          'email': _email,
+          'idstore': '',
+          'ownerId': ownerId,
+          'phoneNumber': _phoneNumber,
+          'product': [],
+          'storeDescription': _storeDescription,
+          'storeLogo': _storeLogoUrl ?? '',
+          'storeName': _storeName,
+        });
+
+        await docRef.update({'idstore': docRef.id});
+
+        _showSuccessDialog(); // Tampilkan pop-up setelah berhasil
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan data: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-}
-
 
   void _showSuccessDialog() {
     showDialog(
@@ -183,6 +182,10 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
+                    keyboardType: TextInputType.number, // Mengatur keyboard hanya untuk angka
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.digitsOnly // Membatasi input hanya angka
+                    ],
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
@@ -201,10 +204,19 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
+                    keyboardType: TextInputType.emailAddress, // Ini akan menunjukkan keyboard email
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
+                      hintText: 'Contoh: namatoko@gmail.com',
                     ),
-                    onSaved: (value) => _email = value,
+                    onSaved: (value) {
+                      // Jika pengguna tidak memasukkan domain, secara otomatis menambahkannya
+                      if (value != null && !value.contains('@gmail.com')) {
+                        _email = '$value@gmail.com';
+                      } else {
+                        _email = value;
+                      }
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Email Toko tidak boleh kosong';
@@ -234,7 +246,9 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
             Container(
               color: Colors.black54,
               child: const Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF319F43)), // Warna hijau #319F43
+                ),
               ),
             ),
         ],

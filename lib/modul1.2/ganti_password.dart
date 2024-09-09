@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
+
   @override
   _ForgotPasswordPageState createState() => _ForgotPasswordPageState();
 }
@@ -16,7 +18,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     // Validasi format email
     if (!_validateEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Format email tidak valid')),
+        const SnackBar(content: Text('Format email tidak valid')),
       );
       return;
     }
@@ -24,7 +26,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await _auth.sendPasswordResetEmail(email: email);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Link reset kata sandi sudah dikirim ke email')),
+        const SnackBar(content: Text('Link reset kata sandi sudah dikirim ke email')),
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,7 +47,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/BGLogin.png'), // Gambar latar belakang
             fit: BoxFit.cover,
@@ -56,14 +58,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     Image.asset('assets/lupa_pw.png',
                         height: 40), // Ganti dengan path logo Anda
-                    SizedBox(width: 10),
-                    Text(
+                    const SizedBox(width: 10),
+                    const Text(
                       'Pemulihan Akun',
                       style: TextStyle(
                         fontSize: 24,
@@ -74,8 +76,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ],
                 ),
-                SizedBox(height: 60),
-                Text(
+                const SizedBox(height: 60),
+                const Text(
                   'Temukan akunmu',
                   style: TextStyle(
                     fontSize: 16,
@@ -84,12 +86,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextField(
                     controller: _emailController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       hintText: 'Masukkan email',
                       border: OutlineInputBorder(),
                       filled: true,
@@ -100,31 +102,31 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                     ),
                     keyboardType: TextInputType.emailAddress,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Nunito',
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _resetPassword,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF62E703), // Background color
-                      padding: EdgeInsets.symmetric(vertical: 15.0),
+                      backgroundColor: const Color(0xFF62E703), // Background color
+                      padding: const EdgeInsets.symmetric(vertical: 15.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
-                      textStyle: TextStyle(
+                      textStyle: const TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Nunito',
                       ),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Temukan',
                       style: TextStyle(color: Colors.white),
                     ),

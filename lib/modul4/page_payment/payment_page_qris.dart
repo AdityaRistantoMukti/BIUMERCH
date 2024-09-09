@@ -76,7 +76,7 @@ class _PaymentPageQrisState extends State<PaymentPageQris> {
   Future<void> _generateQris() async {
     try {
       final response = await http.post(
-        Uri.parse('https://sixth-island-hair.glitch.me/api/generateQris'),
+        Uri.parse('https://us-central1-long-flash-434811-b9.cloudfunctions.net/qris-api/api/generateQris'),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -183,133 +183,136 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
 
 
 
-  Future<void> _onPaymentSuccess() async {
-    User? user = FirebaseAuth.instance.currentUser;
+Future<void> _onPaymentSuccess() async {
+  User? user = FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksiTemp')
-          .doc(_refId)
-          .update({'status': 'waiting-store-confirmation'});
+  if (user != null) {
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('transaksiTemp')
+        .doc(_refId)
+        .update({'status': 'waiting-store-confirmation'});
 
-      var transaksiTempDoc = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksiTemp')
-          .doc(_refId)
-          .get();
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksi')
-          .doc(_refId)
-          .set(transaksiTempDoc.data()!);
+    var transaksiTempDoc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('transaksiTemp')
+        .doc(_refId)
+        .get();
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksiTemp')
-          .doc(_refId)
-          .delete();
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('transaksi')
+        .doc(_refId)
+        .set(transaksiTempDoc.data()!);
 
-      _showSuccessDialog();
-    }
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('transaksiTemp')
+        .doc(_refId)
+        .delete();
+
+    _showSuccessDialog();
   }
+}
 
-  void _showSuccessDialog() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (BuildContext buildContext, Animation animation,
-          Animation secondaryAnimation) {
-        return Center(
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.75,
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 60,
+void _showSuccessDialog() {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (BuildContext buildContext, Animation animation,
+        Animation secondaryAnimation) {
+      return Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.75,
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Pembayaran Berhasil!',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Pembayaran Berhasil!',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Transaksi Anda telah berhasil dilakukan dan menunggu konfirmasi dari toko.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
                   ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Transaksi Anda telah berhasil dilakukan dan menunggu konfirmasi dari toko.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) => BottomNavigation()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => BottomNavigation(),
                       ),
-                      backgroundColor: Colors.green,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                      ),
+                    backgroundColor: Colors.green,
+                  ),
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOut,
+        ),
+        child: ScaleTransition(
+          scale: CurvedAnimation(
             parent: animation,
             curve: Curves.easeInOut,
           ),
-          child: ScaleTransition(
-            scale: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeInOut,
-            ),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 
   void _startTimer() {
     _remainingTime = 20 * 60; // Set timer to 20 minutes in seconds
@@ -367,7 +370,7 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
   Future<bool> _checkPaymentStatus() async {
     try {
       final response = await http.post(
-        Uri.parse('https://sixth-island-hair.glitch.me/api/checkPaymentStatus'),
+        Uri.parse('https://us-central1-long-flash-434811-b9.cloudfunctions.net/qris-api/api/checkPaymentStatus'),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',

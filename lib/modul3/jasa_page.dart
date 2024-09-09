@@ -12,6 +12,8 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 void main() => runApp(HalamanJasaApp());
 
 class HalamanJasaApp extends StatelessWidget {
+  const HalamanJasaApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -25,15 +27,18 @@ class HalamanJasaApp extends StatelessWidget {
 }
 
 class HalamanJasa extends StatefulWidget {
+  const HalamanJasa({super.key});
+
   @override
   _HalamanJasaState createState() => _HalamanJasaState();
 }
 
 class _HalamanJasaState extends State<HalamanJasa> {
-  int _selectedIndex = 0;
-  TextEditingController _searchController = TextEditingController();
+  final int _selectedIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
   List<Product> _allProducts = []; // Semua produk dari Firebase
   List<Product> _filteredProducts = [];
+  bool _isLoading = true; // Flag untuk mengecek apakah sedang loading data
   bool _isSearching = false; // Flag untuk mengecek apakah pencarian aktif
 
   @override
@@ -43,19 +48,27 @@ class _HalamanJasaState extends State<HalamanJasa> {
   }
 
   void _fetchProducts() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('products')
-        .where('category', isEqualTo: 'Jasa') // Filter berdasarkan kategori
-        .get();
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('products')
+          .where('category', isEqualTo: 'Jasa') // Filter berdasarkan kategori
+          .get();
 
-    final List<Product> products = snapshot.docs
-        .map((doc) => Product.fromFirestore(doc))
-        .toList();
+      final List<Product> products = snapshot.docs
+          .map((doc) => Product.fromFirestore(doc))
+          .toList();
 
-    setState(() {
-      _allProducts = products; // Simpan semua produk ke _allProducts
-      _filteredProducts = products; // Menampilkan produk dengan kategori "Jasa"
-    });
+      setState(() {
+        _allProducts = products; // Simpan semua produk ke _allProducts
+        _filteredProducts = products; // Menampilkan produk dengan kategori "Jasa"
+        _isLoading = false; // Data sudah diambil, set _isLoading ke false
+      });
+    } catch (e) {
+      print("Error fetching products: $e");
+      setState(() {
+        _isLoading = false; // Jika ada error, tetap set _isLoading ke false
+      });
+    }
   }
 
   void _onItemTapped(int index) {
@@ -78,7 +91,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
         page = BottomNavigation();
     }
 
-     Navigator.pushReplacement(
+    Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => page,
@@ -90,7 +103,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
           );
           return FadeTransition(opacity: opacityAnimation, child: child);
         },
-        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+        transitionDuration: const Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
       ),
     );
   }
@@ -112,7 +125,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Jasa',
           style: TextStyle(
             color: Colors.black,
@@ -122,79 +135,85 @@ class _HalamanJasaState extends State<HalamanJasa> {
         centerTitle: true,      
         elevation: 0,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1.0),
+          preferredSize: const Size.fromHeight(1.0),
           child: Container(
             color: Colors.grey[300],
             height: 1.0,
           ),
         ),
       ),
-      body: Center(
-        child: Column(
-          children: [
-            Container(
-              color: Colors.grey[200],
-              height: 1.0,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+              ),
+            )
+          : Center(
               child: Column(
                 children: [
+                  Container(
+                    color: Colors.grey[200],
+                    height: 1.0,
+                  ),
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(
-                          Icons.search,
-                          size: 30,
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10.0),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                size: 30,
+                              ),
+                              hintText: 'Butuh jasa apa?',
+                              hintStyle: const TextStyle(color: Colors.grey),
+                              filled: true,
+                              fillColor: const Color(0xFFF3F3F3),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20.0),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: _filterProducts,
+                          ),
                         ),
-                        hintText: 'Butuh jasa apa?',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        filled: true,
-                        fillColor: Color(0xFFF3F3F3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20.0),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      onChanged: _filterProducts,
+                      ],
                     ),
+                  ),
+                  Expanded(
+                    child: _filteredProducts.isEmpty
+                        ? Center(
+                            child: Text(
+                              _isSearching ? 'Jasa Tidak Ditemukan' : 'Jasa Tidak tersedia',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          )
+                        : GridView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Menambahkan padding
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 5,
+                              mainAxisSpacing: 5,
+                              childAspectRatio: MediaQuery.of(context).size.width /
+                                  (MediaQuery.of(context).size.height * 0.80),
+                            ),
+                            itemCount: _filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = _filteredProducts[index];
+                              return ProductCard(product: product); // Menggunakan ProductCard
+                            },
+                          ),
                   ),
                 ],
               ),
             ),
-            Expanded(
-                child: _filteredProducts.isEmpty
-                    ? Center(
-                        child: Text(
-                          _isSearching ? 'Jasa Tidak Ditemukan' : 'Jasa Tidak tersedia',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      )
-                    : GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0), // Menambahkan padding
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 5,
-                          mainAxisSpacing: 5,
-                          childAspectRatio: MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height * 0.80),
-                        ),
-                        itemCount: _filteredProducts.length,
-                        itemBuilder: (context, index) {
-                          final product = _filteredProducts[index];
-                          return ProductCard(product: product); // Menggunakan ProductCard
-                        },
-                      ),
-              ),
-
-          ],
-        ),
-      ),
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -216,14 +235,14 @@ class _HalamanJasaState extends State<HalamanJasa> {
             label: 'Kategori',
           ),
           BottomNavigationBarItem(
-              icon: Image.asset(
-                'assets/icons/NavigationBar/riwayat.png',
-                width: 24,
-                height: 24,
-                color: _selectedIndex == 2 ? Colors.grey[800] : Colors.grey[400],
-              ),
-              label: 'Riwayat',
+            icon: Image.asset(
+              'assets/icons/NavigationBar/riwayat.png',
+              width: 24,
+              height: 24,
+              color: _selectedIndex == 2 ? Colors.grey[800] : Colors.grey[400],
             ),
+            label: 'Riwayat',
+          ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset(
               'assets/icons/NavigationBar/profil.svg',

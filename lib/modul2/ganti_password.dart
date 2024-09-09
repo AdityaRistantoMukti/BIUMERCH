@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'edit_profile_page.dart';  // Pastikan sudah mengimpor halaman EditProfilePage
+// Pastikan sudah mengimpor halaman EditProfilePage
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});

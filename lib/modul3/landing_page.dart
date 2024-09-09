@@ -23,6 +23,8 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -36,6 +38,8 @@ class MyApp extends StatelessWidget {
 }
 
 class LandingPage extends StatefulWidget {
+  const LandingPage({super.key});
+
   @override
   _LandingPageState createState() => _LandingPageState();
 }
@@ -46,7 +50,7 @@ class _LandingPageState extends State<LandingPage> {
   late Future<List<BannerModel>> _bannersFuture;
   late Future<List<Product>> _productsFuture;
   late Future<List<Product>> _recommendedProductsFuture; // Tambahkan ini untuk rekomendasi
-  String _searchQuery = '';
+  final String _searchQuery = '';
   String _username = ''; // Variabel untuk menyimpan username
   bool _isLoggedIn = false; // Status login
   int _totalBanners = 0;
@@ -154,20 +158,24 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   Future<List<Product>> _getRecommendedProducts() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    // Ambil kategori dengan visitCount terbesar
+    QuerySnapshot categorySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('categoryVisits')
+        .orderBy('visitCount', descending: true)
+        .limit(1) // Hanya ambil 1 kategori dengan visitCount terbanyak
+        .get();
+
+    if (categorySnapshot.docs.isNotEmpty) {
       // Ambil kategori dengan visitCount terbesar
-      QuerySnapshot categorySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('categoryVisits')
-          .orderBy('visitCount', descending: true)
-          .limit(1) // Hanya ambil 1 kategori dengan visitCount terbanyak
-          .get();
-
-      if (categorySnapshot.docs.isNotEmpty) {
-        String topCategory = categorySnapshot.docs.first.id;
-
+      String topCategory = categorySnapshot.docs.first.id;
+      
+      // Cek jika visitCount adalah 0
+      int visitCount = categorySnapshot.docs.first['visitCount'] ?? 0;
+      if (visitCount > 0) {
         // Ambil produk dari kategori dengan visitCount terbanyak
         QuerySnapshot productsSnapshot = await FirebaseFirestore.instance
             .collection('products')
@@ -178,15 +186,16 @@ class _LandingPageState extends State<LandingPage> {
         return productsSnapshot.docs
             .map((doc) => Product.fromFirestore(doc))
             .toList();
-      } else {
-        // Jika tidak ada kategori yang ditemukan, kembalikan list kosong
-        return [];
       }
-    } else {
-      // Jika user tidak login, kembalikan list kosong
-      return [];
-    }
+    }    
+    // Jika tidak ada kategori dengan visitCount > 0 atau tidak ada kategori ditemukan
+    return fetchAllProducts();
+  } else {
+    // Jika user tidak login, ambil semua produk
+    return fetchAllProducts();
   }
+}
+
 
 //   Future<String?> _fetchUsername() async {
 //   User? user = FirebaseAuth.instance.currentUser;
@@ -228,13 +237,13 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   void _startAutoSlide() {
-    _timer = Timer.periodic(Duration(seconds: 8), (Timer timer) {
+    _timer = Timer.periodic(const Duration(seconds: 8), (Timer timer) {
       if (_pageController.hasClients) {
         int currentPage = _pageController.page?.toInt() ?? 0;
         int nextPage = (currentPage + 1) % _totalBanners;
         _pageController.animateToPage(
           nextPage,
-          duration: Duration(milliseconds: 1000),
+          duration: const Duration(milliseconds: 1000),
           curve: Curves.easeInOut,
         );
       }
@@ -250,11 +259,11 @@ class _LandingPageState extends State<LandingPage> {
               toolbarHeight: MediaQuery.of(context).size.height * 0.13,
               elevation: 0,
               title: Padding(
-                padding: EdgeInsets.only(left: 8.0),
+                padding: const EdgeInsets.only(left: 8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Halo,',
                       style: TextStyle(
                         fontSize: 24.0,
@@ -263,10 +272,10 @@ class _LandingPageState extends State<LandingPage> {
                     ),
                     Text(
                       _username,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 20.0,
                         fontWeight: FontWeight.bold,
-                        color: const Color.fromRGBO(76, 175, 80, 1),
+                        color: Color.fromRGBO(76, 175, 80, 1),
                       ),
                     ),
                   ],
@@ -282,7 +291,7 @@ class _LandingPageState extends State<LandingPage> {
                         MaterialPageRoute(builder: (context) => KeranjangPage()),
                       );
                     },
-                    icon: Icon(Icons.shopping_cart_outlined, size: 40.0),
+                    icon: const Icon(Icons.shopping_cart_outlined, size: 40.0),
                   ),
                 ),
               ],
@@ -321,7 +330,7 @@ class _LandingPageState extends State<LandingPage> {
                         ),
                       ),
                       contentPadding:
-                          EdgeInsets.fromLTRB(25.0, 0.0, 0.0, 0.0),
+                          const EdgeInsets.fromLTRB(25.0, 0.0, 0.0, 0.0),
                       hintStyle: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 16.0,
@@ -331,14 +340,14 @@ class _LandingPageState extends State<LandingPage> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             FutureBuilder<List<BannerModel>>(
               future: _bannersFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Container(
                     height: 200.0,
-                    margin: EdgeInsets.all(16.0),
+                    margin: const EdgeInsets.all(16.0),
                     child: Shimmer.fromColors(
                       baseColor: Colors.grey[300]!,
                       highlightColor: Colors.grey[100]!,
@@ -353,10 +362,10 @@ class _LandingPageState extends State<LandingPage> {
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('No banners available'));
+                  return const Center(child: Text('No banners available'));
                 } else {
                   List<BannerModel> banners = snapshot.data!;
-                  return Container(
+                  return SizedBox(
                     height: 200.0,
                     child: Stack(
                       children: [
@@ -365,7 +374,7 @@ class _LandingPageState extends State<LandingPage> {
                           itemCount: banners.length,
                           itemBuilder: (context, index) {
                             return Container(
-                              margin: EdgeInsets.all(16.0),
+                              margin: const EdgeInsets.all(16.0),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(15.0),
                                 child: Stack(
@@ -402,7 +411,7 @@ class _LandingPageState extends State<LandingPage> {
                                       },
                                       errorBuilder:
                                           (context, error, stackTrace) {
-                                        return Center(
+                                        return const Center(
                                             child: Text('Error loading banner'));
                                       },
                                     ),
@@ -423,7 +432,7 @@ class _LandingPageState extends State<LandingPage> {
                             child: SmoothPageIndicator(
                               controller: _pageController,
                               count: banners.length,
-                              effect: WormEffect(
+                              effect: const WormEffect(
                                 activeDotColor: Colors.green,
                                 dotColor: Colors.grey,
                                 dotHeight: 8.0,
@@ -444,14 +453,14 @@ class _LandingPageState extends State<LandingPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
+                  const Text(
                     'Kategori',
                     style: TextStyle(
                       fontSize: 20.0,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 10.0),
+                  const SizedBox(height: 10.0),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -465,7 +474,7 @@ class _LandingPageState extends State<LandingPage> {
                           SvgmarginTop: 8.0,
                           isFirst: true,
                         ),
-                        SizedBox(width: 18.0),
+                        const SizedBox(width: 18.0),
                         _buildCategoryCard(
                           context: context,
                           svgPath: 'assets/icons/Kategori/jasa.svg',
@@ -474,7 +483,7 @@ class _LandingPageState extends State<LandingPage> {
                           svgHeight: 40.0,
                           SvgmarginTop: 5.0,
                         ),
-                        SizedBox(width: 18.0),
+                        const SizedBox(width: 18.0),
                         _buildCategoryCard(
                           context: context,
                           svgPath: 'assets/icons/Kategori/perlengkapan.svg',
@@ -483,7 +492,7 @@ class _LandingPageState extends State<LandingPage> {
                           svgHeight: 30.0,
                           SvgmarginTop: 10.0,
                         ),
-                        SizedBox(width: 18.0),
+                        const SizedBox(width: 18.0),
                         _buildCategoryCard(
                           context: context,
                           svgPath: 'assets/icons/Kategori/lainnya.svg',
@@ -503,23 +512,25 @@ class _LandingPageState extends State<LandingPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
+                  const Text(
                     'Rekomendasi buat kamu',
                     style: TextStyle(
                       fontSize: 20.0,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 10.0),
+                  const SizedBox(height: 10.0),
                   FutureBuilder<List<Product>>(
                     future: _isLoggedIn ? _recommendedProductsFuture : _productsFuture, // Pilih Future berdasarkan status login
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
+                        return const Center(child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green), // Warna loader hijau
+                        ));
                       } else if (snapshot.hasError) {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Center(child: Text('No products available'));
+                        return const Center(child: Text('No products available'));
                       } else {
                         List<Product> products = snapshot.data!;
                         List<Product> filteredProducts = products.where((product) {
@@ -532,7 +543,7 @@ class _LandingPageState extends State<LandingPage> {
                             children: List.generate(filteredProducts.length, (index) {
                               final product = filteredProducts[index];
                               return ConstrainedBox(
-                                constraints: BoxConstraints(
+                                constraints: const BoxConstraints(
                                   maxWidth: 200,
                                 ),
                                 child: ProductCard(product: product),
@@ -591,7 +602,7 @@ class _LandingPageState extends State<LandingPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              margin: isFirst ? EdgeInsets.only(top: 16.0, left: 0.0) : EdgeInsets.only(left: 0.0),
+              margin: isFirst ? const EdgeInsets.only(top: 16.0, left: 0.0) : const EdgeInsets.only(left: 0.0),
               child: CategoryCard(
                 svgPath: svgPath,
                 title: '',
@@ -600,11 +611,11 @@ class _LandingPageState extends State<LandingPage> {
                 SvgmarginTop: SvgmarginTop,
               ),
             ),
-            SizedBox(height: 6.0),
+            const SizedBox(height: 6.0),
             Align(
               alignment: Alignment.center,
               child: ConstrainedBox(
-                constraints: BoxConstraints(
+                constraints: const BoxConstraints(
                   maxWidth: 100.0,
                 ),
                 child: Text(
@@ -634,7 +645,7 @@ class CategoryCard extends StatelessWidget {
   final double svgHeight;
   final double SvgmarginTop;
 
-  CategoryCard({
+  const CategoryCard({super.key, 
     required this.svgPath,
     required this.title,
     this.svgWidth = 40.0,
@@ -647,9 +658,9 @@ class CategoryCard extends StatelessWidget {
     return Container(
       width: 70.0,
       height: 70.0,
-      padding: EdgeInsets.all(10.0),
+      padding: const EdgeInsets.all(10.0),
       decoration: BoxDecoration(
-        color: Color(0xFFF4F4F4),
+        color: const Color(0xFFF4F4F4),
         borderRadius: BorderRadius.circular(15.0),
         border: Border.all(color: Colors.grey[300]!, width: 1.0),
       ),
@@ -666,7 +677,7 @@ class CategoryCard extends StatelessWidget {
           Flexible(
             child: Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.black,
                 fontSize: 12.0,
               ),
@@ -683,7 +694,7 @@ class CategoryCard extends StatelessWidget {
 class CategoryDetailPage extends StatelessWidget {
   final String title;
 
-  CategoryDetailPage({required this.title});
+  const CategoryDetailPage({super.key, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -694,7 +705,7 @@ class CategoryDetailPage extends StatelessWidget {
       body: Center(
         child: Text(
           'Detail Page: $title',
-          style: TextStyle(fontSize: 24.0),
+          style: const TextStyle(fontSize: 24.0),
         ),
       ),
     );

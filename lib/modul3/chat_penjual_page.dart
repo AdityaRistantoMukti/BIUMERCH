@@ -4,17 +4,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
 
 class HalamanChatPenjual extends StatefulWidget {
   final String roomId;
   final String buyerUID;
   final String sellerUID;
 
-  HalamanChatPenjual({
+  const HalamanChatPenjual({
+    super.key,
     required this.roomId,
     required this.buyerUID,
     required this.sellerUID,
@@ -25,18 +23,14 @@ class HalamanChatPenjual extends StatefulWidget {
 }
 
 class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
-  int _selectedIndex = 0;
-  TextEditingController _messageController = TextEditingController();
+  final int _selectedIndex = 0;
+  final TextEditingController _messageController = TextEditingController();
 
-   @override
+  @override
   void initState() {
     super.initState();
     _listenForMessages();
   }
-  
-  
- 
-
 
   void _onItemTapped(int index) {
     Widget page;
@@ -70,13 +64,12 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
           );
           return FadeTransition(opacity: opacityAnimation, child: child);
         },
-        transitionDuration: Duration(milliseconds: 10),
+        transitionDuration: const Duration(milliseconds: 10),
       ),
     );
   }
-   
-  
-  Future<void> _sendMessage() async {
+
+  void _sendMessage({String? existingMessageId}) async {
     if (_messageController.text.trim().isEmpty) return;
 
     String message = _messageController.text.trim();
@@ -88,11 +81,23 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
           .doc(widget.roomId)
           .collection('messages');
 
-      await messagesRef.add({
-        'senderUID': user.uid,
-        'message': message,
-        'timestamp': Timestamp.now(),
-      });
+      String senderUID = user.uid; // UID user yang sedang login
+
+      if (existingMessageId != null) {
+        // Update existing message
+        await messagesRef.doc(existingMessageId).update({
+          'senderUID': senderUID,
+          'message': message,
+          'timestamp': Timestamp.now(),
+        });
+      } else {
+        // Add new message
+        await messagesRef.add({
+          'senderUID': senderUID,
+          'message': message,
+          'timestamp': Timestamp.now(),
+        });
+      }
 
       // Update last message in room
       await FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).update({
@@ -105,23 +110,22 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
   }
 
   void _listenForMessages() {
-      FirebaseFirestore.instance
-      .collection('rooms')
-      .doc(widget.roomId)
-      .collection('messages')
-      .orderBy('timestamp', descending: true)
-      .snapshots()
-      .listen((snapshot) {
+    FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(widget.roomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen((snapshot) {
       for (var change in snapshot.docChanges) {
         if (change.type == DocumentChangeType.added) {
           var messageData = change.doc.data();
 
           if (messageData != null) {
-            String senderId = messageData['senderId'] ?? '';
+            String senderId = messageData['senderUID'] ?? '';
 
-            print('Pesan baru diterima dari $senderId'); // Tambahkan log ini
-
-            if (senderId != widget.buyerUID) {
+            // Jika senderId bukan milik penjual (pesan diterima oleh penjual)
+            if (senderId != widget.sellerUID) {
               _showNotification("Pesan Baru", messageData['message'] ?? '');
             }
           }
@@ -130,13 +134,11 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
     });
   }
 
-
-  
   Future<void> _showNotification(String title, String body) async {
     var androidPlatformChannelSpecifics = const AndroidNotificationDetails(
-      'chat_notifications', // Ganti dengan ID channel yang sesuai
-      'Chat Notifications', // Ganti dengan nama channel yang sesuai
-      channelDescription: 'Notifikasi untuk pesan chat baru dari pembeli atau penjual', // Ganti dengan deskripsi channel yang sesuai
+      'chat_notifications',
+      'Chat Notifications',
+      channelDescription: 'Notifikasi untuk pesan chat baru dari pembeli atau penjual',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: false,
@@ -144,7 +146,6 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
 
     var platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
-      // Jika Anda ingin menambahkan pengaturan untuk iOS, tambahkan di sini
     );
 
     await flutterLocalNotificationsPlugin.show(
@@ -158,9 +159,11 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
 
   @override
   Widget build(BuildContext context) {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat dengan Penjual'),
+        title: const Text('Chat dengan Penjual'),
         centerTitle: true,
       ),
       body: Column(
@@ -175,15 +178,15 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Terjadi kesalahan'));
+                  return const Center(child: Text('Terjadi kesalahan'));
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('Belum ada pesan'));
+                  return const Center(child: Text('Belum ada pesan'));
                 }
 
                 var messages = snapshot.data!.docs;
@@ -193,18 +196,28 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     var message = messages[index];
-                    bool isMe = message['senderUID'] == widget.buyerUID;
-                    return ListTile(
-                      title: Align(
-                        alignment:
-                            isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          padding: EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            color: isMe ? Colors.green[100] : Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8.0),
+                    bool isSender = message['senderUID'] == currentUser?.uid;
+
+                    return Align(
+                      alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.all(12.0),
+                        margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+                        decoration: BoxDecoration(
+                          color: isSender ? Colors.blue[100] : Colors.green[100],
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            topRight: Radius.circular(12),
+                            bottomLeft: isSender ? Radius.circular(12) : Radius.circular(0),
+                            bottomRight: isSender ? Radius.circular(0) : Radius.circular(12),
                           ),
-                          child: Text(message['message']),
+                        ),
+                        child: Text(
+                          message['message'],
+                          style: TextStyle(
+                            color: isSender ? Colors.black : Colors.black,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     );
@@ -214,7 +227,7 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 Expanded(
@@ -228,10 +241,10 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
                     ),
                   ),
                 ),
-                SizedBox(width: 8.0),
+                const SizedBox(width: 8.0),
                 IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  icon: const Icon(Icons.send),
+                  onPressed: () => _sendMessage(),
                 ),
               ],
             ),

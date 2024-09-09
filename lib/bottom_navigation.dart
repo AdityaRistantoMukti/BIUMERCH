@@ -8,14 +8,14 @@ import 'modul2/profile_page.dart';
 class BottomNavigation extends StatelessWidget {
   final int selectedIndex;
 
-  BottomNavigation({this.selectedIndex = 0}); // Default ke index 0
+  BottomNavigation({super.key, this.selectedIndex = 0}); // Default ke index 0
 
   // Daftar halaman yang akan ditampilkan saat berpindah
   final List<Widget> _pages = <Widget>[
     LandingPage(),          // Beranda
     CategoryPage(),         // Kategori
     HistoryPage(),          // Riwayat
-    ProfilePage(),          // Profil
+    const ProfilePage(),          // Profil
   ];
 
   @override
@@ -82,7 +82,7 @@ class BottomNavigation extends StatelessWidget {
                 return FadeTransition(opacity: opacityAnimation, child: child);
               },
               transitionDuration:
-                  Duration(milliseconds: 10), // Durasi transisi yang diinginkan
+                  const Duration(milliseconds: 10), // Durasi transisi yang diinginkan
             ),
           );
         }, // Fungsi yang dipanggil saat item diklik

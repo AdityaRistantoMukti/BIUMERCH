@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 class VerificationPage extends StatefulWidget {
   final String email;
 
-  VerificationPage({required this.email, required String verification, required String phone, required String verificationId});
+  const VerificationPage({super.key, required this.email, required String verification, required String phone, required String verificationId});
 
   @override
   _VerificationPageState createState() => _VerificationPageState();
@@ -40,7 +40,7 @@ class _VerificationPageState extends State<VerificationPage> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengirim OTP')),
+        const SnackBar(content: Text('Gagal mengirim OTP')),
       );
     } finally {
       setState(() {
@@ -60,7 +60,7 @@ class _VerificationPageState extends State<VerificationPage> {
       Navigator.pushReplacementNamed(context, '/verification-success');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kode OTP tidak valid')),
+        const SnackBar(content: Text('Kode OTP tidak valid')),
       );
     }
   }
@@ -73,7 +73,7 @@ class _VerificationPageState extends State<VerificationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/bg.png'), // Gambar latar belakang
             fit: BoxFit.cover,
@@ -91,8 +91,8 @@ class _VerificationPageState extends State<VerificationPage> {
                     height: 150.0,
                     width: 150.0,
                   ),
-                  SizedBox(height: 20.0),
-                  Text(
+                  const SizedBox(height: 20.0),
+                  const Text(
                     'Verifikasi OTP',
                     style: TextStyle(
                       fontSize: 24.0,
@@ -100,20 +100,20 @@ class _VerificationPageState extends State<VerificationPage> {
                       color: Color(0xFF62E703),
                     ),
                   ),
-                  SizedBox(height: 10.0),
+                  const SizedBox(height: 10.0),
                   Text(
                     'Kode OTP telah dikirim ke ${widget.email}',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16.0,
                       color: Colors.black,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 20.0),
+                  const SizedBox(height: 20.0),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'Tidak menerima OTP?',
                         style: TextStyle(color: Colors.black),
                       ),
@@ -123,7 +123,7 @@ class _VerificationPageState extends State<VerificationPage> {
                           'Kirim Ulang',
                           style: TextStyle(
                             color: _isResendButtonEnabled
-                                ? Color(0xFF62E703)
+                                ? const Color(0xFF62E703)
                                 : Colors.grey,
                             fontWeight: FontWeight.bold,
                           ),
@@ -131,13 +131,13 @@ class _VerificationPageState extends State<VerificationPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 10.0),
+                  const SizedBox(height: 10.0),
                   Container(
-                    padding: EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(
                           0.8), // Transparansi untuk konten di atas gambar
-                      border: Border.all(color: Color(0xFF0B4D3B)),
+                      border: Border.all(color: const Color(0xFF0B4D3B)),
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: Column(
@@ -162,23 +162,23 @@ class _VerificationPageState extends State<VerificationPage> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 20.0),
+                  const SizedBox(height: 20.0),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _verifyOtp,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF62E703),
-                        padding: EdgeInsets.symmetric(vertical: 15.0),
+                        backgroundColor: const Color(0xFF62E703),
+                        padding: const EdgeInsets.symmetric(vertical: 15.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.0),
                         ),
-                        textStyle: TextStyle(
+                        textStyle: const TextStyle(
                           fontSize: 16.0,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: Text('Verifikasi'),
+                      child: const Text('Verifikasi'),
                     ),
                   ),
                 ],

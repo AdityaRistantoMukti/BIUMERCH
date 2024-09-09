@@ -9,13 +9,13 @@ class CustomText extends StatelessWidget {
   final TextAlign textAlign;
 
   const CustomText({
-    Key? key,
+    super.key,
     required this.text,
     this.fontSize = 15,
     this.fontWeight = FontWeight.w400,
     this.color = TColors.textAccent,
     this.textAlign = TextAlign.center,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

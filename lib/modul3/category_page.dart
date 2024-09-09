@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class CategoryPage extends StatelessWidget {
+  const CategoryPage({super.key});
+
   @override 
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -21,14 +23,14 @@ class CategoryPage extends StatelessWidget {
         appBar: AppBar(          
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (context) => BottomNavigation()),
               );
             },
           ),
-          title: Text(
+          title: const Text(
             'Kategori',
             style: TextStyle(color: Colors.black),
           ),
@@ -58,15 +60,15 @@ class CategoryPage extends StatelessWidget {
                         size: 28.0,  // Increase the size of the icon
                       ),
                     ),
-                    hintStyle: TextStyle(
+                    hintStyle: const TextStyle(
                       color: Colors.grey,  // Color of the hint text
                       height: 1.5,  // Adjust the line height (this affects the vertical positioning of the hint text)
                     ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 16.0), // Adjust vertical padding for hint text margin
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0), // Adjust vertical padding for hint text margin
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               // Category Wrap
               Expanded(
                 child: Wrap(
@@ -74,7 +76,7 @@ class CategoryPage extends StatelessWidget {
                   spacing: 16.0,
                   runSpacing: 16.0,
                   children: categories.map((category) {
-                    return Container(
+                    return SizedBox(
                       width: MediaQuery.of(context).size.width / 4 - 20,
                       child: _buildCategoryCard(
                         svgPath: category['svgPath'],
@@ -116,7 +118,7 @@ class CategoryPage extends StatelessWidget {
             width: containerWidth,
             height: containerHeight,
             decoration: BoxDecoration(
-              color: Color(0xFFF4F4F4),
+              color: const Color(0xFFF4F4F4),
               borderRadius: BorderRadius.circular(20.0),
             ),
             child: Center(
@@ -130,7 +132,7 @@ class CategoryPage extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 8.0),
+          const SizedBox(height: 8.0),
           Align(
             alignment: Alignment.center,
             child: Text(
@@ -164,7 +166,7 @@ class CategoryPage extends StatelessWidget {
       default:
         page = BottomNavigation();
     }
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => page,
@@ -176,7 +178,7 @@ class CategoryPage extends StatelessWidget {
           );
           return FadeTransition(opacity: opacityAnimation, child: child);
         },
-        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+        transitionDuration: const Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
       ),
     );
   }

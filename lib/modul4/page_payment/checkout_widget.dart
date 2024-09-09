@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'payment_page_qris.dart';
-import '/modul1.2/utils/popups/full_screen_loader.dart'; 
 import '/modul1.2/data/repositories/authentication/authentication_repository.dart'; // Ganti impor untuk autentikasi
 
 class CheckoutWidget extends StatefulWidget {
@@ -138,13 +137,7 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.of(context).pop(true);
-          },
-        ),
-        title: Text(
+         title: Text(
           'Ringkasan Pesanan',
           style: TextStyle(
             color: Color(0xFF000000),
@@ -240,12 +233,7 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
     await _deleteCheckedItemsFromCart();
     
     if (paymentMethod == 'QRIS') {
-      // Tampilkan loading screen
-      TFullScreenLoader.openLoadingDialog('Pembayaran anda sedang dibuat! mohon tunggu sebentar...');
-
-      try {
-        // Simulasikan penundaan untuk pembuatan QRIS
-        await Future.delayed(Duration(seconds: 3)); 
+     
         
         // Navigasi ke halaman pembayaran
         await Navigator.pushReplacement(
@@ -258,17 +246,9 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
             additionalNotes: _additionalNotes,
           )),
         );
-      } catch (e) {
-        // Tangani error jika perlu
-        print('Error during QRIS generation: $e');
-      } finally {
-        // Tutup loading screen
-        TFullScreenLoader.stopLoading();
-      }
     }
   }
 },
-
 ),
 
           ],

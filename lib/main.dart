@@ -9,6 +9,7 @@ import 'package:biumerch_mobile_app/modul1/login.dart';
 import 'package:biumerch_mobile_app/modul2/penjual_toko.dart';
 import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:biumerch_mobile_app/modul2/tokobaru.dart';
+import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -42,7 +43,7 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // Inisialisasi pengaturan Android
-  var initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+  var initializationSettingsAndroid = const AndroidInitializationSettings('@mipmap/ic_launcher');
   var initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
@@ -91,9 +92,10 @@ class MyApp extends StatelessWidget {
         '/register': (context) => RegisterPage(),
         '/profile': (context) => const ProfilePage(),
         '/chatpage': (context) => const ChatPage(),
-        '/sellerProfile': (context) => SellerProfileScreen(storeId: ''), // Sesuaikan dengan logika
+        '/sellerProfile': (context) => const SellerProfileScreen(storeId: ''), // Sesuaikan dengan logika
         '/formatif': (context) => const FormatifPage(),
         '/tokobaru': (context) => const TokoBaruPage(), // Tambahkan route untuk TokoBaruPage
+        '/riwayat': (context) =>  HistoryPage(),
         '/verification': (context) => VerificationPage(
               verificationId: '', // Placeholder, will be set during navigation
               phone: '', verification: '', email: '', // Placeholder, will be set during navigation

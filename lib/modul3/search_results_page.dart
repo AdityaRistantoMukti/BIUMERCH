@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 class SearchResultsPage extends StatelessWidget {
   final String query;
 
-  SearchResultsPage({required this.query});
+  const SearchResultsPage({super.key, required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +13,7 @@ class SearchResultsPage extends StatelessWidget {
       appBar: AppBar(
         leadingWidth: 25,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -32,11 +32,11 @@ class SearchResultsPage extends StatelessWidget {
                   controller: TextEditingController(text: query),
                   decoration: InputDecoration(
                     hintText: 'Mau cari apa?',
-                    suffixIcon: Icon(Icons.search),  // Mengubah dari suffix ke prefix
+                    suffixIcon: const Icon(Icons.search),  // Mengubah dari suffix ke prefix
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25.0),  // Mengubah radius sesuai UI yang diinginkan
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     filled: true,
                     // fillColor: Colors.grey[200],  // Warna background yang diinginkan
                   ),
@@ -50,7 +50,7 @@ class SearchResultsPage extends StatelessWidget {
         stream: FirebaseFirestore.instance.collection('products').snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           // Periksa jika snapshot memiliki data yang valid
@@ -66,14 +66,14 @@ class SearchResultsPage extends StatelessWidget {
           List<Product> searchResults = _performSubstringSearch(query, products);
 
           if (searchResults.isEmpty) {
-            return Center(child: Text('Tidak Ditemukan'));
+            return const Center(child: Text('Tidak Ditemukan'));
           }
 
           return GridView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Add padding to the grid
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Add padding to the grid
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.60,
+              childAspectRatio: MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height * 0.80),
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
             ),

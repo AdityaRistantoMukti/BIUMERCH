@@ -1,3 +1,6 @@
+import 'package:biumerch_mobile_app/modul2/chat_page.dart';
+import 'package:biumerch_mobile_app/modul3/chat_penjual_page.dart';
+import 'package:biumerch_mobile_app/modul3/listChat.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -114,7 +117,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            content: Column(
+            content: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
@@ -122,8 +125,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                   color: Colors.green,
                   size: 48,
                 ),
-                const SizedBox(height: 16),
-                const Text(
+                SizedBox(height: 16),
+                Text(
                   'Produk berhasil dihapus',
                   style: TextStyle(fontSize: 18),
                 ),
@@ -264,7 +267,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                               aspectRatio: aspectRatio,
                               child: Image.network(
                                 imageUrls[index],
-                                fit: BoxFit.contain,
+                                fit: BoxFit.cover,
                               ),
                             );
                           },
@@ -302,12 +305,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double aspectRatio = MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height / 1.6); // Misalnya
+  
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          storeName,
-          style: const TextStyle(
-            color: Color(0xFF319F43),
+        title: const Text(
+          'Toko Saya',
+          style: TextStyle(
+            color: Colors.grey,
           ),
         ),
         centerTitle: true,
@@ -406,105 +411,178 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Row(
+                 const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 10, // Horizontal space between boxes
+                    runSpacing: 10, // Vertical space between boxes
                     children: <Widget>[
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            // Handle Saldo button click
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F3F3),
-                              borderRadius: BorderRadius.circular(10),
+                      // Box for Saldo
+                      Container(
+                        width: 110, // Consistent width for each box
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F3F3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            Image.asset(
+                              'assets/images/saldo.jpg',
+                              width: 30,
+                              height: 30,
                             ),
-                            child: Row(
-                              children: <Widget>[
-                                Image.asset(
-                                  'assets/images/saldo.jpg',
-                                  width: 30,
-                                  height: 30,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Text(
-                                        'Saldo',
-                                        style: TextStyle(
-                                          color: Color(0xFF0B4D3B),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 10),
-                                      Text(
-                                        'Rp 1.000.000',
-                                        style: TextStyle(
-                                          color: Color(0xFF0B4D3B),
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 10),
+                            const Text(
+                              'Saldo',
+                              style: TextStyle(
+                                color: Color(0xFF0B4D3B),
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
+                            const SizedBox(height: 5),
+                            const Text(
+                              '1.000.000',
+                              style: TextStyle(
+                                color: Color(0xFF0B4D3B),
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Box for Pesanan with Navigation
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const KelolaPesananScreen()),
+                          );
+                        },
+                        child: Container(
+                          width: 110,
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F3F3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            children: <Widget>[
+                              Image.asset(
+                                'assets/images/pesanan.jpg',
+                                width: 30,
+                                height: 30,
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Pesanan',
+                                style: TextStyle(
+                                  color: Color(0xFF0B4D3B),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              const Text(
+                                '12',
+                                style: TextStyle(
+                                  color: Color(0xFF0B4D3B),
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const KelolaPesananScreen()),
+                      
+                      // The Chat Box with dynamic total of unique buyers
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => ListChat(storeId: widget.storeId)),
+                          );
+                        },
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('rooms')
+                              .where('sellerUID', isEqualTo: widget.storeId)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Container(
+                                width: 110,
+                                padding: const EdgeInsets.all(16.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3F3F3),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  children: const <Widget>[
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 30,
+                                      color: Color(0xFF0B4D3B),
+                                    ),
+                                    SizedBox(height: 10),
+                                    Text(
+                                      'Chat',
+                                      style: TextStyle(
+                                        color: Color(0xFF0B4D3B),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 5),
+                                    CircularProgressIndicator(), // Loading spinner while data is being fetched
+                                  ],
+                                ),
+                              );
+                            }
+
+                            // Use a Set to keep track of unique buyerUIDs
+                            Set<String> uniqueBuyers = {};
+
+                            for (var doc in snapshot.data!.docs) {
+                              uniqueBuyers.add(doc['buyerUID']);
+                            }
+
+                            return Container(
+                              width: 110,
+                              padding: const EdgeInsets.all(16.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F3F3),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 30,
+                                    color: Color(0xFF0B4D3B),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  const Text(
+                                    'Chat',
+                                    style: TextStyle(
+                                      color: Color(0xFF0B4D3B),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    uniqueBuyers.length.toString(), // Display total unique buyers
+                                    style: const TextStyle(
+                                      color: Color(0xFF0B4D3B),
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           },
-                          child: Container(
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F3F3),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: <Widget>[
-                                Image.asset(
-                                  'assets/images/pesanan.jpg',
-                                  width: 30,
-                                  height: 30,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Text(
-                                        'Total Pesanan',
-                                        style: TextStyle(
-                                          color: Color(0xFF0B4D3B),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 10),
-                                      Text(
-                                        '12',
-                                        style: TextStyle(
-                                          color: Color(0xFF0B4D3B),
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
                       ),
                     ],
@@ -531,65 +609,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          bool? confirmDelete = await showDialog<bool>(
-                            context: context,
-                            builder: (context) {
-                              return AlertDialog(
-                                title: const Text('Konfirmasi Penghapusan Toko'),
-                                content: const Text('Apakah Anda yakin ingin menghapus toko ini beserta semua produk?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(false);
-                                    },
-                                    child: const Text('No'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(true);
-                                    },
-                                    child: const Text('Yes'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-
-                          if (confirmDelete == true) {
-                            _deleteStore();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                        ),
-                        child: const Text(
-                          'Hapus Toko',
-                          style: TextStyle(
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  ),                
                   const SizedBox(height: 20),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 4 / 5,
+                      childAspectRatio: 0.7, // Menyesuaikan rasio aspek dengan konten
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                     ),
@@ -648,33 +675,37 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
+                              // Padding untuk memberikan jarak antara gambar dan container utama
                               Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(10),
-                                      topRight: Radius.circular(10),
-                                    ),
-                                    image: DecorationImage(
-                                      image: product['imageUrls'] != null && product['imageUrls'].isNotEmpty
-                                          ? NetworkImage(product['imageUrls'][0])
-                                          : const AssetImage('assets/images/default.jpg') as ImageProvider,
-                                      fit: BoxFit.cover,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4.0), // Atur padding sesuai kebutuhan
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8), // Radius pada container penampung gambar
+                                    child: Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        image: DecorationImage(
+                                          image: product['imageUrls'] != null && product['imageUrls'].isNotEmpty
+                                              ? NetworkImage(product['imageUrls'][0])
+                                              : const AssetImage('assets/images/default.jpg') as ImageProvider,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.all(1.5),
+                                padding: const EdgeInsets.all(4.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Text(
                                       product['name'] ?? '',
                                       style: const TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.bold,
-                                      ),
+                                      ),              
                                     ),
                                     const SizedBox(height: 5),
                                     Text(
@@ -715,7 +746,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         ),
                       );
                     },
-                  ),
+                  ),      
                 ],
               ),
             ),

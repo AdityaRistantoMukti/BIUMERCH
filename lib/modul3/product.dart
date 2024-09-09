@@ -58,7 +58,7 @@ class Product {
 class ProductCard extends StatelessWidget {
   final Product product;
 
-  ProductCard({
+  const ProductCard({super.key, 
     required this.product,
   });
 
@@ -144,7 +144,7 @@ class ProductCard extends StatelessWidget {
       },
       child: Container(
         width: 220, // Slightly wider card
-        margin: EdgeInsets.all(7.0),
+        margin: const EdgeInsets.all(7.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15.0),
           color: Colors.white,
@@ -153,16 +153,16 @@ class ProductCard extends StatelessWidget {
               color: Colors.grey.withOpacity(0.5),
               spreadRadius: 2,
               blurRadius: 3,
-              offset: Offset(0, 7),
+              offset: const Offset(0, 7),
             ),
           ],
         ),
-        child: Column(
+        child: Column(  
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Inner card for the image with reduced height
             Card(
-              margin: EdgeInsets.all(8.0), // Remove default margin
+              margin: const EdgeInsets.all(8.0), // Remove default margin
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10.0), // Inner card radius
               ),
@@ -185,14 +185,14 @@ class ProductCard extends StatelessWidget {
                 children: [
                   Text(
                     product.title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16.0,
                       fontWeight: FontWeight.bold, // Make the title bold
                     ),
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4.0), // Reduce space between text widgets
+                  const SizedBox(height: 4.0), // Reduce space between text widgets
                   Text(
                     formatter.format(product.price),
                     style: TextStyle(
@@ -202,11 +202,11 @@ class ProductCard extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 4.0), // Reduce space between text and rating
+                  const SizedBox(height: 4.0), // Reduce space between text and rating
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                     decoration: BoxDecoration(
-                      color: Color(0xFF319F43), // Change background color of rating edge to #319F43
+                      color: const Color(0xFF319F43), // Change background color of rating edge to #319F43
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: Row(
@@ -218,10 +218,10 @@ class ProductCard extends StatelessWidget {
                           color: Colors.yellow[700],
                           size: 16.0,
                         ),
-                        SizedBox(width: 4.0),
+                        const SizedBox(width: 4.0),
                         Text(
                           product.rating.toString(),
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),

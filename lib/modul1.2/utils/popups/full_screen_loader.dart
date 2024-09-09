@@ -26,8 +26,6 @@ class TFullScreenLoader {
     // Tangani kasus di mana tidak ada context yang valid
   }
 }
-
-
   static stopLoading() {
     Navigator.of(Get.overlayContext!).pop();
   }

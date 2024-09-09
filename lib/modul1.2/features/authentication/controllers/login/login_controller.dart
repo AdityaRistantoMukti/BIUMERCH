@@ -11,7 +11,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 class LoginController extends GetxController {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   /// Variables
-  final rememberMe = false.obs;
+  final rememberMe = false.obs; 
   final localStorage = GetStorage();
   final email = TextEditingController();
   final password = TextEditingController();

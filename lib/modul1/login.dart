@@ -13,6 +13,8 @@ final FirebaseAuth _auth = FirebaseAuth.instance;
 final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -20,8 +22,13 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false; // Tambahkan variabel ini untuk mengontrol loading
 
   void _login() async {
+    setState(() {
+      _isLoading = true; // Set loading saat proses login dimulai
+    });
+
     String emailOrPhone = _emailOrPhoneController.text.trim();
     String password = _passwordController.text.trim();
 
@@ -36,11 +43,12 @@ class _LoginPageState extends State<LoginPage> {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
 
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (context) => BottomNavigation(),
           ),
+          (Route<dynamic> route) => false, 
         );
       } on FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -50,6 +58,10 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Login failed: ${e.toString()}')),
         );
+      } finally {
+        setState(() {
+          _isLoading = false; // Set loading selesai
+        });
       }
     } else {
       _loginWithPhone(emailOrPhone, password);
@@ -57,6 +69,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _loginWithPhone(String phoneNumber, String password) async {
+    setState(() {
+      _isLoading = true; // Set loading saat proses login dimulai
+    });
+
     try {
       final confirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
       Navigator.push(
@@ -64,7 +80,9 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(
           builder: (context) => VerificationPage(
             verification: confirmationResult.verificationId,
-            phone: phoneNumber, email: '', verificationId: '',
+            phone: phoneNumber,
+            email: '',
+            verificationId: '',
           ),
         ),
       );
@@ -76,96 +94,100 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed: ${e.toString()}')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false; // Set loading selesai
+      });
     }
   }
 
   Future<void> _signInWithGoogle() async {
-  try {
-    // Sign out from any previous Google account (ensures account selection on next sign-in)
-    await _googleSignIn.signOut();
-    // Attempt to sign in with Google
-    final googleUser = await _googleSignIn.signIn();
-    
-    if (googleUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In was cancelled')),
-      );
-      return;
-    }
+    try {
+      // Sign out from any previous Google account (ensures account selection on next sign-in)
+      await _googleSignIn.signOut();
+      // Attempt to sign in with Google
+      final googleUser = await _googleSignIn.signIn();
 
-    // Authenticate with Firebase
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    // Sign in to Firebase with the Google [UserCredential]
-    final userCredential = await _auth.signInWithCredential(credential);
-    final User? user = userCredential.user;
-
-    if (user != null) {
-      // Cek apakah pengguna baru
-      final DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
-      if (!userDoc.exists) {
-        // Jika pengguna baru, simpan informasi mereka ke Firestore
-        await _firestore.collection('users').doc(user.uid).set({
-          'email': user.email,
-          'username': user.displayName ?? 'Anonymous',
-          'createdAt': FieldValue.serverTimestamp(),
-          'balance': 0, // Set initial balance to 0
-          'idUser': user.uid, // Set idUser to the same as the document ID
-          'phone': '', // Set phoneNumber to empty string
-          'profilePicture': '', // Set profilePicture to empty string
-        });
-
-        // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
-        List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
-
-        await _firestore.collection('users').doc(user.uid)
-            .collection('categoryVisits')
-            .get()
-            .then((snapshot) async {
-          if (snapshot.docs.isEmpty) {
-            // Jika sub-koleksi 'categoryVisits' kosong, tambahkan dokumen dengan nama kategori
-            for (String category in categories) {
-              await _firestore.collection('users').doc(user.uid)
-                  .collection('categoryVisits').doc(category).set({
-                'category': category,
-                'visitCount': 0,
-                'timestamp': FieldValue.serverTimestamp(),
-              });
-            }
-            print("Category visits collection created with initial categories for user ${user.uid}");
-          } else {
-            print("Category visits collection already exists for user ${user.uid}");
-          }
-        });
+      if (googleUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Sign-In was cancelled')),
+        );
+        return;
       }
 
-      // Save login status
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
+      // Authenticate with Firebase
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-      // Navigate to landing page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BottomNavigation(),
-        ),
+      // Sign in to Firebase with the Google [UserCredential]
+      final userCredential = await _auth.signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        // Cek apakah pengguna baru
+        final DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+          // Jika pengguna baru, simpan informasi mereka ke Firestore
+          await _firestore.collection('users').doc(user.uid).set({
+            'email': user.email,
+            'username': user.displayName ?? 'Anonymous',
+            'createdAt': FieldValue.serverTimestamp(),
+            'balance': 0, // Set initial balance to 0
+            'idUser': user.uid, // Set idUser to the same as the document ID
+            'phone': '', // Set phoneNumber to empty string
+            'profilePicture': '', // Set profilePicture to empty string
+          });
+
+          // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
+          List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
+
+          await _firestore.collection('users').doc(user.uid)
+              .collection('categoryVisits')
+              .get()
+              .then((snapshot) async {
+            if (snapshot.docs.isEmpty) {
+              // Jika sub-koleksi 'categoryVisits' kosong, tambahkan dokumen dengan nama kategori
+              for (String category in categories) {
+                await _firestore.collection('users').doc(user.uid)
+                    .collection('categoryVisits').doc(category).set({
+                  'category': category,
+                  'visitCount': 0,
+                  'timestamp': FieldValue.serverTimestamp(),
+                });
+              }
+              print("Category visits collection created with initial categories for user ${user.uid}");
+            } else {
+              print("Category visits collection already exists for user ${user.uid}");
+            }
+          });
+        }
+
+        // Save login status
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+
+        // Navigate to landing page
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BottomNavigation(),
+          ),
+          (Route<dynamic> route) => false, 
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google Sign-In failed: ${e.message}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google Sign-In failed: ${e.toString()}')),
       );
     }
-  } on FirebaseAuthException catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Google Sign-In failed: ${e.message}')),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Google Sign-In failed: ${e.toString()}')),
-    );
   }
-}
-
 
   void _navigateToForgotPassword() {
     Navigator.push(
@@ -183,7 +205,7 @@ class _LoginPageState extends State<LoginPage> {
         fit: StackFit.expand,
         children: <Widget>[
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/BGLogin.png'),
                 fit: BoxFit.cover,
@@ -197,8 +219,8 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    SizedBox(height: 323.0), // Vertical spacing
-                    Text(
+                    const SizedBox(height: 323.0), // Vertical spacing
+                    const Text(
                       'Hai, Selamat \nDatang Kembali!',
                       style: TextStyle(
                         fontFamily: 'Nunito',
@@ -209,8 +231,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 20.0), // Vertical spacing
-                    Text(
+                    const SizedBox(height: 20.0), // Vertical spacing
+                    const Text(
                       'Masuk ke akunmu yuk!',
                       style: TextStyle(
                         fontFamily: 'Nunito',
@@ -219,17 +241,17 @@ class _LoginPageState extends State<LoginPage> {
                         color: Color(0xFF5F5F5F),
                       ),
                     ),
-                    SizedBox(height: 20.0), // Vertical spacing
+                    const SizedBox(height: 20.0), // Vertical spacing
                     TextField(
                       controller: _emailOrPhoneController,
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Color(0xFFF3F3F3),
+                        fillColor: const Color(0xFFF3F3F3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                         ),
                         labelText: 'Masukkan email atau nomor telepon',
-                        labelStyle: TextStyle(
+                        labelStyle: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 14.0,
                           fontWeight: FontWeight.w700,
@@ -237,18 +259,18 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 10.0),
+                    const SizedBox(height: 10.0),
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: Color(0xFFF3F3F3),
+                        fillColor: const Color(0xFFF3F3F3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10.0),
                         ),
                         labelText: 'Masukkan password',
-                        labelStyle: TextStyle(
+                        labelStyle: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 14.0,
                           fontWeight: FontWeight.w700,
@@ -256,12 +278,12 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 10.0),
+                    const SizedBox(height: 10.0),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _navigateToForgotPassword,
-                        child: Text(
+                        child: const Text(
                           'Lupa password?',
                           style: TextStyle(
                             fontSize: 14.0,
@@ -270,79 +292,55 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 20.0),
+                    const SizedBox(height: 20.0),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _login,
+                        onPressed: _isLoading ? null : _login, // Disable button while loading
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF62E703),
-                          padding: EdgeInsets.symmetric(vertical: 15.0),
+                          backgroundColor: _isLoading ? Colors.grey : const Color(0xFF62E703), // Ubah warna tombol saat loading
+                          padding: const EdgeInsets.symmetric(vertical: 15.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
                           ),
-                          textStyle: TextStyle(
+                          textStyle: const TextStyle(
                             fontSize: 16.0,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        child: Text('Masuk'),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              )
+                            : const Text('Masuk'),
                       ),
                     ),
-                    SizedBox(height: 10.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 100,
-                          child: Divider(color: Colors.grey),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                          child: Text(
-                            'atau',
-                            style: TextStyle(
-                              fontSize: 14.0,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 100,
-                          child: Divider(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10.0),
+                    const SizedBox(height: 20.0),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _signInWithGoogle,
+                        onPressed: _isLoading ? null : _signInWithGoogle, // Disable button while loading
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 15.0),
+                          backgroundColor: _isLoading ? Colors.grey : const Color(0xFF62E703), // Ubah warna tombol saat loading
+                          padding: const EdgeInsets.symmetric(vertical: 15.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            side: BorderSide(color: Colors.grey),
                           ),
-                          textStyle: TextStyle(
+                          textStyle: const TextStyle(
                             fontSize: 16.0,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: Colors.white,
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Image.asset('assets/google_logo.png', height: 24.0),
-                            SizedBox(width: 10.0),
-                            Text('Masuk menggunakan Google',
-                                style: TextStyle(color: Colors.black)),
-                          ],
-                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              )
+                            : const Text('Masuk dengan Google'),
                       ),
                     ),
+                    const SizedBox(height: 20.0),
                   ],
                 ),
               ),

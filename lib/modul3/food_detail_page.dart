@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class FoodDetailPage extends StatefulWidget {
   final ImageProvider image;
@@ -16,7 +17,7 @@ class FoodDetailPage extends StatefulWidget {
   final String category;
   final String storeId;
 
-  FoodDetailPage({
+  const FoodDetailPage({super.key, 
     required this.image,
     required this.title,
     required this.price,
@@ -32,10 +33,12 @@ class FoodDetailPage extends StatefulWidget {
 }
 
 class _FoodDetailPageState extends State<FoodDetailPage>
-    with SingleTickerProviderStateMixin {
+  with SingleTickerProviderStateMixin {
   int _quantity = 1;
   String? _selectedOption;
   String _additionalNotes = ''; 
+  List<String> imageUrls = [];
+  final PageController _pageController = PageController();
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -51,16 +54,31 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+     _fetchImages();
+     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 2800), // Total durasi animasi (2 detik + durasi scaling)
     );
-    _scaleAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.bounceOut,
-    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem<double>(
+        tween: Tween<double>(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 50,
+      ),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(begin: 1.0, end: 1.0), // Bertahan dengan ukuran penuh
+        weight: 1000, // Bertahan selama 2 detik (2000 ms)
+      ),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+    ]).animate(_animationController);
+
     _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 1),
+      begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -71,6 +89,22 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   }
 
 // Fungsi - Fungsi
+  // Mengambil gambar pada firebase 
+  Future<void> _fetchImages() async {
+    try {
+      DocumentSnapshot productDoc = await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.productId)
+          .get();
+
+      setState(() {
+        imageUrls = List<String>.from(productDoc['imageUrls']);
+      });
+    } catch (e) {
+      print("Error fetching images: $e");
+    }
+  }
+
   // Tambahkan method untuk menyimpan catatan tambahan dari modal
   void _setAdditionalNotes(String notes) {
     setState(() {
@@ -84,17 +118,17 @@ class _FoodDetailPageState extends State<FoodDetailPage>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Hubungi Penjual"),
-          content: Text("Apakah Anda ingin menghubungi penjual terkait produk ini?"),
+          title: const Text("Hubungi Penjual"),
+          content: const Text("Apakah Anda ingin menghubungi penjual terkait produk ini?"),
           actions: <Widget>[
             TextButton(
-              child: Text("Tidak"),
+              child: const Text("Tidak"),
               onPressed: () {
                 Navigator.of(context).pop(); // Tutup dialog
               },
             ),
             TextButton(
-              child: Text("Ya"),
+              child: const Text("Ya"),
               onPressed: () async {
                 Navigator.of(context).pop(); // Tutup dialog
 
@@ -168,7 +202,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
         ),
-        title: Row(
+        title: const Row(
           children: [
             Icon(Icons.warning, color: Colors.redAccent),
             SizedBox(width: 10),
@@ -183,7 +217,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
             ),
           ],
         ),
-        content: Text(
+        content: const Text(
           'Anda harus memilih salah satu opsi sebelum melanjutkan.',
           style: TextStyle(
             color: Colors.black,
@@ -194,13 +228,13 @@ class _FoodDetailPageState extends State<FoodDetailPage>
         actions: <Widget>[
           TextButton(
             style: TextButton.styleFrom(
-              backgroundColor: Color(0xFF707070),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              backgroundColor: const Color(0xFF707070),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: Text(
+            child: const Text(
               'Tutup',
               style: TextStyle(
                 color: Colors.white,
@@ -282,7 +316,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
         builder: (BuildContext context) {
           return AlertDialog(
             backgroundColor: Colors.white,
-            title: Column(
+            title: const Column(
               mainAxisSize: MainAxisSize.min, // Menyesuaikan ukuran kolom agar tidak terlalu tinggi
               children: [
                 Icon(
@@ -307,7 +341,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.grey,
                 ),
-                child: Text("Batal"),
+                child: const Text("Batal"),
                 onPressed: () {
                   Navigator.of(context).pop(); // Tutup dialog
                 },
@@ -316,7 +350,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.green,
                 ),
-                child: Text("Login"),
+                child: const Text("Login"),
                 onPressed: () {
                   Navigator.of(context).pop(); // Tutup dialog
                   Navigator.pushReplacementNamed(context, '/login'); // Arahkan ke halaman login
@@ -377,7 +411,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
         builder: (BuildContext context) {
           return AlertDialog(
             backgroundColor: Colors.white,
-            title: Column(
+            title: const Column(
               mainAxisSize: MainAxisSize.min, // Menyesuaikan ukuran kolom agar tidak terlalu tinggi
               children: [
                 Icon(
@@ -402,7 +436,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.grey,
                 ),
-                child: Text("Batal"),
+                child: const Text("Batal"),
                 onPressed: () {
                   Navigator.of(context).pop(); // Tutup dialog
                 },
@@ -411,7 +445,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.green,
                 ),
-                child: Text("Login"),
+                child: const Text("Login"),
                 onPressed: () {
                   Navigator.of(context).pop(); // Tutup dialog
                   Navigator.pushReplacementNamed(context, '/login'); // Arahkan ke halaman login
@@ -430,6 +464,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
   @override
   void dispose() {
     _animationController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -441,21 +476,21 @@ Future<void> _proceedToCheckout(BuildContext context) async {
       appBar: AppBar(
         title: Text(
           widget.title,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 20.0,
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0),
+          preferredSize: const Size.fromHeight(4.0),
           child: Container(
             color: Colors.grey,
             height: 2.0,
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.of(context).pop();
           },
@@ -470,14 +505,42 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      SizedBox(height: 6.0),
-                      Container(
-                        width: double.infinity,
-                        height: screenWidth * 0.6,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: widget.image,
-                            fit: BoxFit.cover,
+                      const SizedBox(height: 4.0),
+                      SizedBox(
+                            width: double.infinity,
+                            height: screenWidth * 0.6,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              itemCount: imageUrls.length,
+                              itemBuilder: (context, index) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20.0),
+                                      image: DecorationImage(
+                                        image: NetworkImage(imageUrls[index]),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                    if (imageUrls.length > 1) // Show indicators only if there are multiple images
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Center( // This centers the SmoothPageIndicator horizontally
+                          child: SmoothPageIndicator(
+                            controller: _pageController, // PageController
+                            count: imageUrls.length,
+                            effect: const WormEffect(
+                              dotHeight: 8.0,
+                              dotWidth: 8.0,
+                              activeDotColor: Colors.green,
+                              dotColor: Colors.grey,
+                            ), // Customizable effect
                           ),
                         ),
                       ),
@@ -528,14 +591,14 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                             Container(
                               padding: EdgeInsets.all(screenWidth * 0.03),
                               decoration: BoxDecoration(
-                                color: Color.fromARGB(255, 255, 249, 249),
+                                color: const Color.fromARGB(255, 255, 249, 249),
                                 borderRadius: BorderRadius.circular(10.0),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.1),
                                     spreadRadius: 2,
                                     blurRadius: 2,
-                                    offset: Offset(0, 1),
+                                    offset: const Offset(0, 1),
                                   ),
                                 ],
                               ),
@@ -560,7 +623,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                               ),
                             ),
                             SizedBox(height: screenWidth * 0.04),
-                            Text(
+                             Text(
                               'Ulasan Pembeli:',
                               style: TextStyle(
                                 fontSize: screenWidth * 0.045,
@@ -568,18 +631,64 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                               ),
                             ),
                             SizedBox(height: screenWidth * 0.02),
-                            ReviewCard(
-                              username: 'Madeline',
-                              timeAgo: '1 hari yang lalu',
-                              rating: 4.0,
-                              comment:
-                                  'Geprek nya enak dan sambal nya juga sangat pedas',
-                            ),
-                            ReviewCard(
-                              username: 'Irfan',
-                              timeAgo: '2 jam yang lalu',
-                              rating: 5.0,
-                              comment: 'Mantap!',
+                            StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('products')
+                                  .doc(widget.productId)
+                                  .collection('reviews')
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return Text('Error: ${snapshot.error}');
+                                }
+
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const CircularProgressIndicator();
+                                }
+
+                                if (snapshot.hasData) {
+                                  final reviews = snapshot.data!.docs;
+
+                                  if (reviews.isEmpty) {
+                                    return const Text('Belum ada ulasan.');
+                                  }
+
+                                  return Column(
+                                    children: reviews.map((doc) {
+                                      final reviewData = doc.data() as Map<String, dynamic>;
+                                      final userId = reviewData['userId'] ?? '';
+
+                                      return FutureBuilder<DocumentSnapshot>(
+                                        future: FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(userId)
+                                            .get(),
+                                        builder: (context, userSnapshot) {
+                                          if (userSnapshot.hasError) {
+                                            return Text('Error: ${userSnapshot.error}');
+                                          }
+
+                                          if (userSnapshot.connectionState == ConnectionState.waiting) {
+                                            return const CircularProgressIndicator();
+                                          }
+
+                                          final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
+                                          final username = userData?['username'] ?? 'Anonim';
+
+                                          return ReviewCard(
+                                            username: username,
+                                            timeAgo: reviewData['timeAgo'] ?? 'Baru saja',
+                                            rating: reviewData['rating']?.toDouble() ?? 0.0,
+                                            comment: reviewData['review'] ?? '',
+                                          );
+                                        },
+                                      );
+                                    }).toList(),
+                                  );
+                                }
+
+                                return const Text('Tidak ada data.');
+                              },
                             ),
                             SizedBox(height: screenWidth * 0.06),
                           ],
@@ -621,21 +730,21 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                           },
                         );
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 98, 231, 3),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.12,
+                            vertical: screenWidth * 0.03),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
                       child: Text(
                         'Pesan Sekarang',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: screenWidth * 0.045,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color.fromARGB(255, 98, 231, 3),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.12,
-                            vertical: screenWidth * 0.03),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
                         ),
                       ),
                     ),
@@ -654,12 +763,12 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                 scale: _scaleAnimation,
                 child: Center(
                   child: Container(
-                    padding: EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
                       color: Colors.green[700],
                       borderRadius: BorderRadius.circular(30.0),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.check_circle, color: Colors.white, size: 24),
@@ -701,7 +810,7 @@ void _showOptionsModal(BuildContext context) {
   return StatefulBuilder(
     builder: (BuildContext context, StateSetter setState) {
       return Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
         ),
@@ -719,7 +828,7 @@ void _showOptionsModal(BuildContext context) {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   ClipRRect(
@@ -743,7 +852,7 @@ void _showOptionsModal(BuildContext context) {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         Text(
                           "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
                           style: TextStyle(
@@ -786,7 +895,7 @@ void _showOptionsModal(BuildContext context) {
               SizedBox(height: screenWidth * 0.02),
               TextField(
                 decoration: InputDecoration(
-                  hintText: "Catatan : Bagian paha atas, sambal di pisah",
+                  hintText: "Catatan : ",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.0),
                   ),
@@ -818,7 +927,7 @@ void _showOptionsModal(BuildContext context) {
                             }
                           });
                         },
-                        icon: Icon(Icons.remove_circle_outline),
+                        icon: const Icon(Icons.remove_circle_outline),
                       ),
                       Text(
                         "$_quantity",
@@ -832,7 +941,7 @@ void _showOptionsModal(BuildContext context) {
                             _quantity++;
                           });
                         },
-                        icon: Icon(Icons.add_circle_outline),
+                        icon: const Icon(Icons.add_circle_outline),
                       ),
                     ],
                   ),
@@ -846,20 +955,20 @@ void _showOptionsModal(BuildContext context) {
                     Navigator.of(context).pop(); // Tutup bottom sheet
                     await _proceedToCheckout(context); // Lanjutkan ke checkout
                 },
-                child: Text(
-                  "Pesan Sekarang",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth * 0.045,
-                  ),
-                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 98, 231, 3),
+                  backgroundColor: const Color.fromARGB(255, 98, 231, 3),
                   padding: EdgeInsets.symmetric(
                       horizontal: screenWidth * 0.29,
                       vertical: screenWidth * 0.03),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: Text(
+                  "Pesan Sekarang",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenWidth * 0.045,
                   ),
                 ),
               ),
@@ -878,7 +987,7 @@ Widget _buildBottomSheet2(BuildContext context) {
   return StatefulBuilder(
     builder: (BuildContext context, StateSetter setState) {
       return Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
         ),
@@ -896,7 +1005,7 @@ Widget _buildBottomSheet2(BuildContext context) {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   ClipRRect(
@@ -920,7 +1029,7 @@ Widget _buildBottomSheet2(BuildContext context) {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         Text(
                           "Total Harga: ${_currencyFormatter.format(widget.price * _quantity)}",
                           style: TextStyle(
@@ -946,7 +1055,7 @@ Widget _buildBottomSheet2(BuildContext context) {
               SizedBox(height: screenWidth * 0.02),
               TextField(
                 decoration: InputDecoration(
-                  hintText: "Catatan : Bagian paha atas, sambal di pisah",
+                  hintText: "Catatan :",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.0),
                   ),
@@ -978,7 +1087,7 @@ Widget _buildBottomSheet2(BuildContext context) {
                             }
                           });
                         },
-                        icon: Icon(Icons.remove_circle_outline),
+                        icon: const Icon(Icons.remove_circle_outline),
                       ),
                       Text(
                         "$_quantity",
@@ -992,7 +1101,7 @@ Widget _buildBottomSheet2(BuildContext context) {
                             _quantity++;
                           });
                         },
-                        icon: Icon(Icons.add_circle_outline),
+                        icon: const Icon(Icons.add_circle_outline),
                       ),
                     ],
                   ),
@@ -1008,20 +1117,20 @@ Widget _buildBottomSheet2(BuildContext context) {
                       Navigator.of(context).pop(); // Tutup bottom sheet
                       await _addToCart(); // Tambahkan ke keranjang
                   },
-                  child: Text(
-                    "Tambahkan ke keranjang",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: screenWidth * 0.045,
-                    ),
-                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 98, 231, 3),
+                    backgroundColor: const Color.fromARGB(255, 98, 231, 3),
                     padding: EdgeInsets.symmetric(
                         horizontal: screenWidth * 0.2,
                         vertical: screenWidth * 0.03),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                  child: Text(
+                    "Tambahkan ke keranjang",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screenWidth * 0.045,
                     ),
                   ),
                 ),
@@ -1049,13 +1158,6 @@ Widget _buildBottomSheet2(BuildContext context) {
         }
       });
     },
-    child: Text(
-      label,
-      style: TextStyle(
-        color: _selectedOption == label ? Colors.white : Colors.black,
-        fontSize: screenWidth * 0.04,
-      ),
-    ),
     style: ElevatedButton.styleFrom(
       backgroundColor: _selectedOption == label
           ? Colors.green
@@ -1064,6 +1166,13 @@ Widget _buildBottomSheet2(BuildContext context) {
           horizontal: screenWidth * 0.04, vertical: screenWidth * 0.025),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8.0),
+      ),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: _selectedOption == label ? Colors.white : Colors.black,
+        fontSize: screenWidth * 0.04,
       ),
     ),
   );
@@ -1077,7 +1186,7 @@ class ReviewCard extends StatelessWidget {
   final double rating;
   final String comment;
 
-  ReviewCard({
+  const ReviewCard({super.key, 
     required this.username,
     required this.timeAgo,
     required this.rating,
@@ -1099,7 +1208,7 @@ class ReviewCard extends StatelessWidget {
             color: Colors.black.withOpacity(0.1),
             spreadRadius: 2,
             blurRadius: 2,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),

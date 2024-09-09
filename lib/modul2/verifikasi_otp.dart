@@ -1,5 +1,4 @@
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
-import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';

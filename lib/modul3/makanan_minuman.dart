@@ -11,6 +11,8 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 void main() => runApp(MakananMinumanApp());
 
 class MakananMinumanApp extends StatelessWidget {
+  const MakananMinumanApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,21 +26,24 @@ class MakananMinumanApp extends StatelessWidget {
 }
 
 class HalamanMakananMinuman extends StatefulWidget {
+  const HalamanMakananMinuman({super.key});
+
   @override
   _HalamanMakananMinumanState createState() => _HalamanMakananMinumanState();
 }
 
 class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
-  int _selectedIndex = 0;
-  TextEditingController _searchController = TextEditingController();
+  final int _selectedIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
   List<Product> _allProducts = []; // Menyimpan semua produk yang diambil dari Firebase
   List<Product> _filteredProducts = [];
+  bool _isLoading = true; // Menandakan apakah data sedang di-fetch
 
   final List<Widget> _widgetOptions = <Widget>[
     LandingPage(),
     CategoryPage(),
     HistoryPage(),
-    ProfilePage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -47,31 +52,37 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
     _fetchProducts();
   }
 
-    void _fetchProducts() async {
-      try {
-        // Ambil produk dari Firebase yang hanya memiliki kategori "Makanan & Minuman"
-        final snapshot = await FirebaseFirestore.instance
-            .collection('products')
-            .where('category', isEqualTo: 'Makanan & Minuman')
-            .get();
-        
-        final List<Product> products = snapshot.docs.map((doc) {
-          print("Document data: ${doc.data()}"); // Print data yang diambil untuk debugging
-          return Product.fromFirestore(doc);
-        }).toList();
+  void _fetchProducts() async {
+    setState(() {
+      _isLoading = true; // Set _isLoading menjadi true saat mulai fetch data
+    });
 
-        setState(() {
-          _allProducts = products;
-          _filteredProducts = products;
-        });
-        
-        print("Total products fetched: ${_allProducts.length}");
-      } catch (e) {
-        print("Error fetching products: $e");
-      }
+    try {
+      // Ambil produk dari Firebase yang hanya memiliki kategori "Makanan & Minuman"
+      final snapshot = await FirebaseFirestore.instance
+          .collection('products')
+          .where('category', isEqualTo: 'Makanan & Minuman')
+          .get();
+
+      final List<Product> products = snapshot.docs.map((doc) {
+        print("Document data: ${doc.data()}"); // Print data yang diambil untuk debugging
+        return Product.fromFirestore(doc);
+      }).toList();
+
+      setState(() {
+        _allProducts = products;
+        _filteredProducts = products;
+        _isLoading = false; // Set _isLoading menjadi false saat data sudah diambil
+      });
+
+      print("Total products fetched: ${_allProducts.length}");
+    } catch (e) {
+      print("Error fetching products: $e");
+      setState(() {
+        _isLoading = false; // Set _isLoading menjadi false jika terjadi error
+      });
+    }
   }
-
-
 
   void _onItemTapped(int index) {
     Widget page;
@@ -104,7 +115,7 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
           );
           return FadeTransition(opacity: opacityAnimation, child: child);
         },
-        transitionDuration: Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+        transitionDuration: const Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
       ),
     );
   }
@@ -125,76 +136,82 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Makanan & Minuman',
           style: TextStyle(
-            color: Colors.black, // Warna teks hitam
-            fontWeight: FontWeight.bold, // Teks tebal
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: true, // Pusatkan teks di AppBar        
-        elevation: 0, // Menghilangkan bayangan AppBar
+        centerTitle: true,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Garis di atas UI search
-            Container(
-              height: 1,
-              decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-            ),
-            SizedBox(height: 8),
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                prefixIcon: Icon(Icons.search, size: 30),
-                hintText: 'Pengen makan apa?',
-                hintStyle: TextStyle(color: Colors.grey),
-                filled: true,
-                fillColor: Color(0xFFF3F3F3), // Background warna search
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                  borderSide: BorderSide.none,
-                ),
+      body: _isLoading // Periksa apakah sedang loading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green), // Warna loader hijau
               ),
-              onChanged: _filterProducts,
-            ),
-            SizedBox(height: 10),
-            Expanded(
-              child: _filteredProducts.isEmpty
-                  ? Center(
-                      child: Text(
-                        _allProducts.isEmpty
-                            ? 'Makanan Tidak Tersedia'
-                            : 'Makanan Tidak Ditemukan',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    )
-                  : GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 2,
-                        mainAxisSpacing: 2,
-                        childAspectRatio: MediaQuery.of(context).size.width / (MediaQuery.of(context).size.height * 0.80),
-                      ),
-                      itemCount: _filteredProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = _filteredProducts[index];
-                        return ProductCard(product: product);
-                      },
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(20.0),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 30),
+                      hintText: 'Pengen makan apa?',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: const Color(0xFFF3F3F3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.0),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: _filterProducts,
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: _filteredProducts.isEmpty
+                        ? Center(
+                            child: Text(
+                              _allProducts.isEmpty
+                                  ? 'Makanan Tidak Tersedia'
+                                  : 'Makanan Tidak Ditemukan',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          )
+                        : GridView.builder(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 2,
+                              mainAxisSpacing: 2,
+                              childAspectRatio: MediaQuery.of(context).size.width /
+                                  (MediaQuery.of(context).size.height * 0.80),
+                            ),
+                            itemCount: _filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = _filteredProducts[index];
+                              return ProductCard(product: product);
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(

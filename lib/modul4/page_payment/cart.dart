@@ -9,32 +9,27 @@ class KeranjangPage extends StatefulWidget {
   @override
   _KeranjangPageState createState() => _KeranjangPageState();
 }
-
-class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProviderStateMixin {
-  List<bool> isCheckedList = [];
-  int totalPrice = 0;
+class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+ List<bool> isCheckedList = [];
+  // Gunakan ValueNotifier untuk totalPrice
+  final ValueNotifier<int> _totalPrice = ValueNotifier<int>(0);
   String _additionalNotes = '';
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
   User? _currentUser;
+  String _sortOption = 'default';
+  String? _selectedStoreId;
 
 
   @override
+  bool get wantKeepAlive => true;
+
+   @override
   void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (ModalRoute.of(context)?.settings.arguments == true) {
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => KeranjangPage()),
-            );
-        }
-    });
     super.initState();
     _animationController = AnimationController(
       duration: Duration(milliseconds: 500),
       vsync: this,
-      
     );
 
     _slideAnimation = Tween<Offset>(
@@ -52,28 +47,29 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
   @override
   void dispose() {
     _animationController.dispose();
+    _totalPrice.dispose(); // Pastikan untuk membuang ValueNotifier
     super.dispose();
   }
 
-  Future<void> _checkLoginStatus() async {
+Future<void> _checkLoginStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       setState(() {
         _currentUser = user;
       });
     } else {
-      // Menggunakan AuthenticationRepository untuk mengelola logika logout dan navigasi
       await AuthenticationRepository.instance.logout();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (_currentUser == null) {
       return Center(child: CircularProgressIndicator());
     }
-
-    return Scaffold(
+return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -101,7 +97,7 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: StreamBuilder<QuerySnapshot>(
+     body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
             .doc(_currentUser!.uid)
@@ -109,259 +105,478 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator()); 
+
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return 
+ Center(child: Text('Error: ${snapshot.error}'));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('Keranjang kosong'));
+            return Center(child: 
+ Text('Keranjang kosong'));
           }
 
           var productDocs = snapshot.data!.docs;
+
+          _applySortingAndFiltering(productDocs);
 
           if (isCheckedList.length != productDocs.length) {
             isCheckedList = List<bool>.filled(productDocs.length, false);
           }
 
-          totalPrice = 0;
-          for (int i = 0; i < productDocs.length; i++) {
-            if (isCheckedList[i]) {
-              totalPrice += ((productDocs[i]['productPrice'] as num).toInt()) * ((productDocs[i]['quantity'] as num).toInt());
-            }
-          }
+          _calculateTotalPrice(productDocs);
+
+
           return Stack(
             children: [
               ListView.builder(
+                key: ValueKey<int>(productDocs.length),
                 padding: EdgeInsets.only(bottom: 150),
                 itemCount: productDocs.length,
-                itemBuilder: (context, index) {
-                  var productDoc = productDocs[index];
-                  String productName = productDoc['productName'] ?? '';
-                  int productPrice = (productDoc['productPrice'] as num).toInt();
-                  String productImage = productDoc['productImage'] ?? '';
-                  int quantity = (productDoc['quantity'] as num).toInt();
-
-                  return SlideTransition(
-                    position: _slideAnimation,
-                    child: Card(
-                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      color: Color(0xFFF4F4F4),
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                productImage,
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(Icons.error);
-                                },
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    productName,
-                                    style: TextStyle(
-                                      fontFamily: 'Nunito',
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  if (productDoc['selectedOption'] != null)
-                                    Text(
-                                      productDoc['selectedOption'],
-                                      style: TextStyle(
-                                        fontFamily: 'Nunito',
-                                        fontSize: 14, // Smaller font size compared to productName
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(productPrice)}',
-                                    style: TextStyle(
-                                      fontFamily: 'Nunito',
-                                      color: Color(0xFF319F43),
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              children: [
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Transform.translate(
-                                    offset: Offset(23, -18),
-                                    child: Transform.scale(
-                                      scale: 1,
-                                      child: Checkbox(
-                                        value: isCheckedList[index],
-                                        onChanged: (value) {
-                                          setState(() {
-                                            isCheckedList[index] = value!;
-                                          });
-                                        },
-                                        activeColor: Color(0xFF60cac0),
-                                        side: BorderSide(
-                                          color: Colors.black,
-                                          width: 1.0,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildQuantityButton(Icons.remove, () async {
-                                      if (quantity > 1) {
-                                        _updateCartQuantity(productDoc.id, quantity - 1);
-                                      } else {
-                                        bool confirm = await _showConfirmationDialog(context);
-                                        if (confirm) {
-                                          _removeItemFromCart(productDoc.id);
-                                        }
-                                      }
-                                    }),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                                      child: Text(
-                                        '$quantity',
-                                        style: TextStyle(
-                                          fontFamily: 'Nunito',
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    _buildQuantityButton(Icons.add, () {
-                                      _updateCartQuantity(productDoc.id, quantity + 1);
-                                    }),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                itemBuilder: (context, index) =>
+                    _buildProductItem(productDocs[index], index, productDocs),
               ),
-              if (totalPrice > 0)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total Harga:',
-                              style: TextStyle(
-                                fontFamily: 'Nunito',
-                                fontSize: 18,
-                              ),
-                            ),
-                            Text(
-                              'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(totalPrice)}',
-                              style: TextStyle(
-                                fontFamily: 'Nunito',
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        ElevatedButton(
-                          child: Center(
-                            child: Text(
-                              'Pesan Sekarang',
-                              style: TextStyle(
-                                fontFamily: 'Nunito',
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF62E703),
-                            padding: EdgeInsets.symmetric(vertical: 16, horizontal: 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            minimumSize: Size(200, 50),
-                          ),
-                          onPressed: () async {
-                          var checkedItems = List.generate(
-  productDocs.length,
-  (index) => isCheckedList[index]
-      ? {
-          'productId': productDocs[index]['productId'],  // Ensure productId is included here
-          'productName': productDocs[index]['productName'],
-          'productPrice': productDocs[index]['productPrice'],
-          'productImage': productDocs[index]['productImage'],
-          'quantity': productDocs[index]['quantity'],
-          'category': productDocs[index]['category'],
-          'selectedOption': productDocs[index]['selectedOption'],
-          'storeId': productDocs[index]['storeId'],
-        }
-      : null,
-).whereType<Map<String, dynamic>>().toList();
-
-                            await Navigator.push(
-                              context,
-                              _createRoute(CheckoutWidget(
-                                checkedItems: checkedItems,
-                                totalPrice: totalPrice,
-                                additionalNotes: _additionalNotes,
-                              )),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+ ValueListenableBuilder<int>(
+                valueListenable: _totalPrice,
+                builder: (context, totalPrice, _) {
+return totalPrice > 0 ? _buildTotalPriceWidget(productDocs) : SizedBox.shrink();                },
+              ),
             ],
           );
         },
       ),
     );
   }
+  void _applySortingAndFiltering(List<QueryDocumentSnapshot> productDocs) {
+    if (_sortOption == 'price_asc') {
+      productDocs.sort((a, b) => (a['productPrice'] as num).compareTo(b['productPrice'] as num));
+    } else if (_sortOption == 'price_desc') {
+      productDocs.sort((a, b) => (b['productPrice'] as num).compareTo(a['productPrice'] as num));
+    }
+
+    if (_selectedStoreId != null) {
+      productDocs.removeWhere((doc) => doc['storeId'] != _selectedStoreId);
+    }
+  }
+ void _calculateTotalPrice(List<QueryDocumentSnapshot> productDocs) {
+    int newTotalPrice = 0;
+    for (int i = 0; i < productDocs.length; i++) {
+      if (isCheckedList[i]) {
+        newTotalPrice += ((productDocs[i]['productPrice'] as num).toInt()) *
+            ((productDocs[i]['quantity'] as num).toInt());
+      }
+    }
+    _totalPrice.value = newTotalPrice; // Perbarui nilai totalPrice melalui ValueNotifier
+  }
+Widget _buildProductItem(QueryDocumentSnapshot productDoc, int index, List<QueryDocumentSnapshot> productDocs) { 
+  String productName = productDoc['productName'] ?? '';
+  int productPrice = (productDoc['productPrice'] as num).toInt();
+  String productImage = productDoc['productImage'] ?? '';
+  int quantity = (productDoc['quantity'] as num).toInt();
+
+  return StatefulBuilder( // Bungkus setiap item dengan StatefulBuilder
+    builder: (context, setState) {
+      return SlideTransition(
+        position: _slideAnimation,
+        child: Card(
+          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          color: Color(0xFFF4F4F4),
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    productImage,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.error);
+                    },
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        productName,
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      if (productDoc['selectedOption'] != null)
+                        Text(
+                          productDoc['selectedOption'],
+                          style: TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(productPrice)}',
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          color: Color(0xFF319F43),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Transform.translate(
+                        offset: Offset(23, -18),
+                        child: Transform.scale(
+                          scale: 1,
+                         child: Checkbox(
+            value: isCheckedList[index],
+            onChanged: (value) {
+              setState(() {
+                isCheckedList[index] = value!;
+                _calculateTotalPrice(productDocs);
+              });
+            },
+                            activeColor: Color(0xFF60cac0),
+                            side: BorderSide(
+                              color: Colors.black,
+                              width: 1.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildQuantityButton(Icons.remove, () async {
+                          if (quantity > 1) {
+                            _updateCartQuantity(productDoc.id, quantity - 1);
+                          } else {
+                            bool confirm = await _showConfirmationDialog(context);
+                            if (confirm) {
+                              _removeItemFromCart(productDoc.id);
+                            }
+                          }
+                        }),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Text(
+                            '$quantity',
+                            style: TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        _buildQuantityButton(Icons.add, () {
+                          _updateCartQuantity(productDoc.id, quantity + 1);
+                        }),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+  Widget _buildTotalPriceWidget(List<QueryDocumentSnapshot> productDocs) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total Harga:',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 18,
+                  ),
+                ),
+                Text(
+            'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(_totalPrice.value)}', // Gunakan _totalPrice.value
+            style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              child: Center(
+                child: Text(
+                  'Pesan Sekarang',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF62E703),
+                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                minimumSize: Size(200, 50),
+              ),
+              onPressed: () async {
+                var checkedItems = _getCheckedItems(productDocs);
+                await Navigator.push(
+                  context,
+                  _createRoute(CheckoutWidget(
+      checkedItems: checkedItems,
+      totalPrice: _totalPrice.value, // Gunakan _totalPrice.value
+      additionalNotes: _additionalNotes,
+    )),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _getCheckedItems(List<QueryDocumentSnapshot> productDocs) {
+    return List.generate(
+      isCheckedList.length,
+      (index) => isCheckedList[index]
+          ? {
+              'productId': productDocs[index]['productId'],
+              'productName': productDocs[index]['productName'],
+              'productPrice': productDocs[index]['productPrice'],
+              'productImage': productDocs[index]['productImage'],
+              'quantity': productDocs[index]['quantity'],
+              'category': productDocs[index]['category'],
+              'selectedOption': productDocs[index]['selectedOption'],
+              'storeId': productDocs[index]['storeId'],
+            }
+          : null,
+    ).whereType<Map<String, dynamic>>().toList();
+  }
+
+Future<Map<String, String>> _getUniqueStores() async {
+    var cartSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUser!.uid)
+        .collection('Cart')
+        .get();
+    
+    Map<String, String> uniqueStores = {};
+    for (var doc in cartSnapshot.docs) {
+      String storeId = doc['storeId'] as String;
+      if (!uniqueStores.containsKey(storeId)) {
+        // Fetch store name from 'stores' collection
+        var storeDoc = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(storeId)
+            .get();
+        
+        if (storeDoc.exists) {
+          String storeName = storeDoc.data()?['storeName'] ?? 'Unknown Store';
+          uniqueStores[storeId] = storeName;
+        }
+      }
+    }
+    return uniqueStores;
+  }
+void _showFilterDialog() {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: Colors.white, // Use white for the background, consistent with other dialogs
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12), // Consistent with other dialogs
+            ),
+            title: Text(
+              'Filter dan Urutan',
+              style: TextStyle(
+                fontSize: 20, // Matching the font size from the confirmation dialog
+                fontWeight: FontWeight.bold,
+                color: Colors.black87, // Same color as the other dialogs
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Urutkan berdasarkan:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87, // Consistent text color
+                  ),
+                ),
+                RadioListTile(
+                  title: Text(
+                    'Default',
+                    style: TextStyle(color: Colors.black87), // Matching text color
+                  ),
+                  value: 'default',
+                  groupValue: _sortOption,
+                  activeColor: Colors.green, // Consistent green color for active radio buttons
+                  onChanged: (value) {
+                    setState(() => _sortOption = value.toString());
+                  },
+                ),
+                RadioListTile(
+                  title: Text(
+                    'Harga Termurah',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                  value: 'price_asc',
+                  groupValue: _sortOption,
+                  activeColor: Colors.green, // Consistent green
+                  onChanged: (value) {
+                    setState(() => _sortOption = value.toString());
+                  },
+                ),
+                RadioListTile(
+                  title: Text(
+                    'Harga Termahal',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                  value: 'price_desc',
+                  groupValue: _sortOption,
+                  activeColor: Colors.green, // Consistent green
+                  onChanged: (value) {
+                    setState(() => _sortOption = value.toString());
+                  },
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Filter Toko:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87, // Consistent text color
+                  ),
+                ),
+                FutureBuilder<Map<String, String>>(
+                  future: _getUniqueStores(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return CircularProgressIndicator(
+                        color: Colors.green, // Consistent green color for loading indicator
+                      );
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Text(
+                        'Tidak ada toko tersedia',
+                        style: TextStyle(color: Colors.black87),
+                      );
+                    }
+                    return DropdownButton<String>(
+                      value: _selectedStoreId,
+                      hint: Text(
+                        'Pilih Toko',
+                        style: TextStyle(color: Colors.black87),
+                      ),
+                      isExpanded: true,
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Semua Toko'),
+                        ),
+                        ...snapshot.data!.entries.map((entry) {
+                          return DropdownMenuItem<String>(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _selectedStoreId = value);
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  'Batal',
+                  style: TextStyle(
+                    color: Colors.black87, // Consistent black text for the button
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  this.setState(() {}); // Trigger a rebuild of the main widget
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  backgroundColor: Colors.green, // Consistent green button background
+                ),
+                child: Text(
+                  'Terapkan',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white, // White text, consistent with other dialogs
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
   void _updateCartQuantity(String docId, int newQuantity) {
     FirebaseFirestore.instance
@@ -506,43 +721,4 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
     );
   }
 
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Filter Options'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CheckboxListTile(
-                title: Text('Filter Option 1'),
-                value: false,
-                onChanged: (bool? value) {},
-              ),
-              CheckboxListTile(
-                title: Text('Filter Option 2'),
-                value: false,
-                onChanged: (bool? value) {},
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text('Apply'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
