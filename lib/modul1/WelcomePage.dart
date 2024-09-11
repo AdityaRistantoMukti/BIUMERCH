@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 
 
 class WelcomePage extends StatelessWidget {
-  const WelcomePage({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -12,7 +10,7 @@ class WelcomePage extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/welcome.png'),
                 fit: BoxFit.cover,
@@ -33,12 +31,12 @@ class WelcomePage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 32.0),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF62E703),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          backgroundColor: Color(0xFF62E703),
+                          padding: EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          textStyle: const TextStyle(
+                          textStyle: TextStyle(
                             fontSize: 16.0,
                             fontWeight: FontWeight.bold,
                           ),
@@ -46,14 +44,14 @@ class WelcomePage extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushNamed(context, '/login');
                         },
-                        child: const Text(
+                        child: Text(
                           'Masuk',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: Padding(
@@ -61,12 +59,12 @@ class WelcomePage extends StatelessWidget {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          padding: EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                            side: const BorderSide(color: Colors.grey),
+                            side: BorderSide(color: Colors.grey),
                           ),
-                          textStyle: const TextStyle(
+                          textStyle: TextStyle(
                             fontSize: 16.0,
                             fontWeight: FontWeight.bold,
                           ),
@@ -74,7 +72,7 @@ class WelcomePage extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushNamed(context, '/register');
                         },
-                        child: const Text(
+                        child: Text(
                           'Daftar',
                           style: TextStyle(
                             color: Color(0xFF0B4D3B),

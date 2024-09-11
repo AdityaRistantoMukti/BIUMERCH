@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
-
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
@@ -62,7 +60,7 @@ class _RegisterPageState extends State<RegisterPage> {
             // Mengirim email verifikasi
             await userCredential.user!.sendEmailVerification();
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('A verification email has been sent. Please check your inbox.'),
               ),
             );
@@ -88,12 +86,12 @@ class _RegisterPageState extends State<RegisterPage> {
         } catch (e) {
           print("Exception: $e");
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('An unexpected error occurred.')),
+            SnackBar(content: Text('An unexpected error occurred.')),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Passwords do not match')),
+          SnackBar(content: Text('Passwords do not match')),
         );
       }
     }
@@ -107,7 +105,7 @@ class _RegisterPageState extends State<RegisterPage> {
         children: <Widget>[
           // Background image
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/BGDaftar.png'),
                 fit: BoxFit.cover,
@@ -123,8 +121,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      const SizedBox(height: 20.0),
-                      const Text(
+                      SizedBox(height: 20.0),
+                      Text(
                         'Hai,\nSelamat Datang!',
                         style: TextStyle(
                           fontSize: 28.0,
@@ -133,8 +131,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 8.0),
-                      const Text(
+                      SizedBox(height: 8.0),
+                      Text(
                         'Untuk menggunakan aplikasi, daftar akunmu dulu yuk!',
                         style: TextStyle(
                           fontSize: 16.0,
@@ -142,7 +140,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20.0),
+                      SizedBox(height: 20.0),
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
@@ -151,7 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF2F2F2),
+                          fillColor: Color(0xFFF2F2F2),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -160,7 +158,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 10.0),
+                      SizedBox(height: 10.0),
                       TextFormField(
                         controller:
                             _phoneController, // Input untuk nomor telepon
@@ -170,7 +168,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF2F2F2),
+                          fillColor: Color(0xFFF2F2F2),
                         ),
                         keyboardType: TextInputType.phone,
                         validator: (value) {
@@ -180,7 +178,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 10.0),
+                      SizedBox(height: 10.0),
                       TextFormField(
                         controller: _usernameController,
                         decoration: InputDecoration(
@@ -189,7 +187,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF2F2F2),
+                          fillColor: Color(0xFFF2F2F2),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -198,7 +196,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 10.0),
+                      SizedBox(height: 10.0),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
@@ -208,7 +206,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF2F2F2),
+                          fillColor: Color(0xFFF2F2F2),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -217,7 +215,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 10.0),
+                      SizedBox(height: 10.0),
                       TextFormField(
                         controller: _confirmPasswordController,
                         obscureText: true,
@@ -227,7 +225,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF2F2F2),
+                          fillColor: Color(0xFFF2F2F2),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -236,39 +234,39 @@ class _RegisterPageState extends State<RegisterPage> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 20.0),
+                      SizedBox(height: 20.0),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: _register,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF62E703),
-                            padding: const EdgeInsets.symmetric(vertical: 15.0),
+                            backgroundColor: Color(0xFF62E703),
+                            padding: EdgeInsets.symmetric(vertical: 15.0),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),
-                            textStyle: const TextStyle(
+                            textStyle: TextStyle(
                               fontSize: 16.0,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Daftar',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10.0),
+                      SizedBox(height: 10.0),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(
+                          Container(
                             width: 100,
-                            child: const Divider(color: Colors.black),
+                            child: Divider(color: Colors.black),
                           ),
-                          const Padding(
+                          Padding(
                             padding:
-                                EdgeInsets.symmetric(horizontal: 10.0),
+                                const EdgeInsets.symmetric(horizontal: 10.0),
                             child: Text(
                               'atau',
                               style: TextStyle(
@@ -277,13 +275,13 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                             ),
                           ),
-                          SizedBox(
+                          Container(
                             width: 100,
-                            child: const Divider(color: Colors.black),
+                            child: Divider(color: Colors.black),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10.0),
+                      SizedBox(height: 10.0),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -292,12 +290,12 @@ class _RegisterPageState extends State<RegisterPage> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15.0),
+                            padding: EdgeInsets.symmetric(vertical: 15.0),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10.0),
-                              side: const BorderSide(color: Colors.grey),
+                              side: BorderSide(color: Colors.grey),
                             ),
-                            textStyle: const TextStyle(
+                            textStyle: TextStyle(
                               fontSize: 16.0,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
@@ -308,8 +306,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             children: <Widget>[
                               Image.asset('assets/google_logo.png',
                                   height: 24.0),
-                              const SizedBox(width: 10.0),
-                              const Text(
+                              SizedBox(width: 10.0),
+                              Text(
                                 'Daftar menggunakan Google',
                                 style: TextStyle(color: Colors.black),
                               ),

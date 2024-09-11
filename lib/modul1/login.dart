@@ -68,21 +68,15 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _loginWithPhone(String phoneNumber, String password) async {
-    setState(() {
-      _isLoading = true; // Set loading saat proses login dimulai
-    });
-
+  Future<void> _loginWithPhone(String phoneNumber, String password) async {
     try {
       final confirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => VerificationPage(
-            verification: confirmationResult.verificationId,
+            verificationId: confirmationResult.verificationId,
             phone: phoneNumber,
-            email: '',
-            verificationId: '',
           ),
         ),
       );
@@ -94,13 +88,9 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed: ${e.toString()}')),
       );
-    } finally {
-      setState(() {
-        _isLoading = false; // Set loading selesai
-      });
     }
   }
-
+  
   Future<void> _signInWithGoogle() async {
     try {
       // Sign out from any previous Google account (ensures account selection on next sign-in)

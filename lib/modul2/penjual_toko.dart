@@ -501,7 +501,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => ListChat(storeId: widget.storeId)),
+                            MaterialPageRoute(builder: (context) => ListChat(storeId: widget.storeId,)),
                           );
                         },
                         child: StreamBuilder<QuerySnapshot>(

@@ -37,6 +37,9 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   int _quantity = 1;
   String? _selectedOption;
   String _additionalNotes = ''; 
+  String? storeOwnerId; // Store owner's UID
+  String? storeName; // Add storeName to hold the name fetched  
+  User? currentUser;
   List<String> imageUrls = [];
   final PageController _pageController = PageController();
 
@@ -55,6 +58,9 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   void initState() {
     super.initState();
      _fetchImages();
+     _fetchStoreOwner();  // Fetch the store owner's ID
+     _fetchStoreName();  // Fetch the store's name
+      currentUser = FirebaseAuth.instance.currentUser;
      _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2800), // Total durasi animasi (2 detik + durasi scaling)
@@ -89,6 +95,24 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   }
 
 // Fungsi - Fungsi
+ // Fetch the ownerId (seller ID) from the store linked to this product's storeId
+  Future<void> _fetchStoreOwner() async {
+    try {
+      DocumentSnapshot storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(widget.storeId)  // Fetch store info based on storeId from product
+          .get();
+
+      if (storeDoc.exists) {
+        setState(() {
+          storeOwnerId = storeDoc['ownerId']; // Save the store's owner ID
+        });
+      }
+    } catch (e) {
+      print("Error fetching store owner: $e");
+    }
+  }
+  
   // Mengambil gambar pada firebase 
   Future<void> _fetchImages() async {
     try {
@@ -105,6 +129,24 @@ class _FoodDetailPageState extends State<FoodDetailPage>
     }
   }
 
+  // Fetch the store's name from the Firestore
+  Future<void> _fetchStoreName() async {
+    try {
+      DocumentSnapshot storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(widget.storeId)
+          .get();
+
+      if (storeDoc.exists) {
+        setState(() {
+          storeName = storeDoc['storeName'];
+        });
+      }
+    } catch (e) {
+      print("Error fetching store name: $e");
+    }
+  }
+
   // Tambahkan method untuk menyimpan catatan tambahan dari modal
   void _setAdditionalNotes(String notes) {
     setState(() {
@@ -113,7 +155,9 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   }
   // End  
   // Fungsi validasi user ingin chat dengan penjual
-  void _showChatConfirmationDialog(BuildContext context, DocumentReference roomRef, String roomId, String buyerUID, String sellerUID) {
+   // Show dialog to confirm chat initiation
+  void _showChatConfirmationDialog(
+      DocumentReference roomRef, String roomId, String buyerUID, String sellerUID) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -124,33 +168,38 @@ class _FoodDetailPageState extends State<FoodDetailPage>
             TextButton(
               child: const Text("Tidak"),
               onPressed: () {
-                Navigator.of(context).pop(); // Tutup dialog
+                Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text("Ya"),
+              child: const Text("Iya"),
               onPressed: () async {
-                Navigator.of(context).pop(); // Tutup dialog
+                Navigator.of(context).pop(); // Close dialog
+                
+                // Navigate to chat room
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HalamanChatPenjual(
+                      roomId: roomId,
+                      buyerUID: buyerUID,
+                      sellerUID: sellerUID,
+                      storeName: storeName ?? 'Unknown Store',
+                    ),
+                  ),
+                );
 
-                // Buat room baru di Firestore
+                // Create a new room
                 await roomRef.set({
                   'buyerUID': buyerUID,
                   'sellerUID': sellerUID,
+                  'productId': widget.productId,
                   'lastMessage': '',
                   'lastMessageTimestamp': Timestamp.now(),
                 });
 
-                // Arahkan ke halaman chat
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HalamanChatPenjual(
-                      roomId: roomId, 
-                      buyerUID: buyerUID, 
-                      sellerUID: sellerUID,
-                    ),
-                  ),
-                );
+                // Auto-send the product image and message
+                await _sendProductCardAndMessage(roomId);
               },
             ),
           ],
@@ -160,38 +209,125 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   }
 
   // 
-   void _startChatWithSeller() async {
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      String buyerUID = user.uid;
-      String sellerUID = widget.storeId; // Menggunakan storeId sebagai UID penjual
-      String roomId = 'room_${buyerUID}_$sellerUID';
-      DocumentReference roomRef = FirebaseFirestore.instance.collection('rooms').doc(roomId);
-
-      // Cek apakah room sudah ada
-      DocumentSnapshot roomSnapshot = await roomRef.get();
-      if (!roomSnapshot.exists) {
-        // Jika room belum ada, tampilkan dialog konfirmasi
-        _showChatConfirmationDialog(context, roomRef, roomId, buyerUID, sellerUID);
-      } else {
-        // Jika room sudah ada, langsung buka halaman chat
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HalamanChatPenjual(
-              roomId: roomId, 
-              buyerUID: buyerUID, 
-              sellerUID: sellerUID,
-            ),
-          ),
-        );
-      }
-    } else {
-      // Jika user belum login, arahkan ke halaman login
-      Navigator.pushReplacementNamed(context, '/login');
-    }
+   // Function to initiate the chat, but first check if the user is the store owner
+  void _startChatWithSeller() async {
+  if (currentUser == null) {
+    Navigator.pushReplacementNamed(context, '/login');
+    return;
   }
+
+  if (currentUser!.uid == storeOwnerId) {
+    _showErrorDialog("You cannot chat with your own store.");
+    return;
+  }
+
+  String buyerUID = currentUser!.uid;
+  String sellerUID = widget.storeId;
+  String roomId = 'room_${buyerUID}_$sellerUID';
+  DocumentReference roomRef = FirebaseFirestore.instance.collection('rooms').doc(roomId);
+
+  // Cek apakah room sudah ada atau belum
+  DocumentSnapshot roomSnapshot = await roomRef.get();
+  if (!roomSnapshot.exists) {
+    await roomRef.set({
+      'buyerUID': buyerUID,
+      'sellerUID': sellerUID,
+      'productId': widget.productId,
+      'lastMessage': '',
+      'lastMessageTimestamp': Timestamp.now(),
+    });
+
+    // Kirim pengguna ke halaman chat dengan draft product
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HalamanChatPenjual(
+          roomId: roomId,
+          buyerUID: buyerUID,
+          sellerUID: sellerUID,
+          storeName: storeName ?? 'Unknown Store',
+          draftProductId: widget.productId,
+          draftProductName: widget.title,
+          draftProductImage: imageUrls.isNotEmpty ? imageUrls[0] : null,
+          draftProductPrice: widget.price,
+        ),
+      ),
+    );
+  } else {
+    // Jika room sudah ada, langsung navigasikan ke chat dengan draft product
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HalamanChatPenjual(
+          roomId: roomId,
+          buyerUID: buyerUID,
+          sellerUID: sellerUID,
+          storeName: storeName ?? 'Unknown Store',
+          draftProductId: widget.productId,
+          draftProductName: widget.title,
+          draftProductImage: imageUrls.isNotEmpty ? imageUrls[0] : null,
+          draftProductPrice: widget.price,
+        ),
+      ),
+    );
+  }
+}
+
+// Send the initial message and product image 
+Future<void> _sendProductCardAndMessage(String roomId) async {
+  CollectionReference messagesRef = FirebaseFirestore.instance
+      .collection('rooms')
+      .doc(roomId)
+      .collection('messages');
+
+  // Sending product card (image, name, price)
+  await messagesRef.add({
+    'senderUID': currentUser!.uid,
+    'message': {
+      'image': imageUrls.isNotEmpty ? imageUrls[0] : null,
+      'name': widget.title,
+      'price': widget.price,
+    },
+    'type': 'product_card', // We are defining a new message type
+    'timestamp': Timestamp.now(),
+  });
+
+  // Sending follow-up text message
+  await messagesRef.add({
+    'senderUID': currentUser!.uid,
+    'message': "Apakah produk ini masih tersedia?",
+    'type': 'text',
+    'timestamp': Timestamp.now(),
+  });
+
+  // Update the room's last message
+  await FirebaseFirestore.instance.collection('rooms').doc(roomId).update({
+    'lastMessage': "Apakah produk ini masih tersedia?",
+    'lastMessageTimestamp': Timestamp.now(),
+  });
+}
+
+   // Dialog to notify the user that they cannot chat with their own store
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Tidak bisa chat dengan toko sendiri"),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("Close"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 // End
 // Validasi user memilih Opsi Menu
   void _showValidationMessage() {

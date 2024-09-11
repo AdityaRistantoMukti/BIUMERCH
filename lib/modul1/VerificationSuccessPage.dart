@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
 class VerificationSuccessPage extends StatelessWidget {
-  const VerificationSuccessPage({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/BGLogin.png'), // Gambar latar belakang
             fit: BoxFit.cover,
@@ -25,8 +23,8 @@ class VerificationSuccessPage extends StatelessWidget {
                     height: 150.0,
                     width: 150.0,
                   ),
-                  const SizedBox(height: 20.0),
-                  const Text(
+                  SizedBox(height: 20.0),
+                  Text(
                     'Email Berhasil Diverifikasi!',
                     style: TextStyle(
                       fontSize: 24.0,
@@ -34,8 +32,8 @@ class VerificationSuccessPage extends StatelessWidget {
                       color: Color(0xFF62E703),
                     ),
                   ),
-                  const SizedBox(height: 10.0),
-                  const Text(
+                  SizedBox(height: 10.0),
+                  Text(
                     'Selamat, email Anda telah berhasil diverifikasi!',
                     style: TextStyle(
                       fontSize: 16.0,
@@ -43,7 +41,7 @@ class VerificationSuccessPage extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 20.0),
+                  SizedBox(height: 20.0),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -51,17 +49,17 @@ class VerificationSuccessPage extends StatelessWidget {
                         Navigator.pushReplacementNamed(context, '/home');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF62E703),
-                        padding: const EdgeInsets.symmetric(vertical: 15.0),
+                        backgroundColor: Color(0xFF62E703),
+                        padding: EdgeInsets.symmetric(vertical: 15.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.0),
                         ),
-                        textStyle: const TextStyle(
+                        textStyle: TextStyle(
                           fontSize: 16.0,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: const Text('Lanjutkan'),
+                      child: Text('Lanjutkan'),
                     ),
                   ),
                 ],

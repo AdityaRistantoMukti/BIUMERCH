@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:math';
-import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 
 class VerificationPage extends StatefulWidget {
-  final String email;
+  final String verificationId;
+  final String phone;
 
-  const VerificationPage({super.key, required this.email, required String verification, required String phone, required String verificationId});
+  VerificationPage({required this.verificationId, required this.phone});
 
   @override
   _VerificationPageState createState() => _VerificationPageState();
@@ -14,66 +13,60 @@ class VerificationPage extends StatefulWidget {
 
 class _VerificationPageState extends State<VerificationPage> {
   final _otpController = TextEditingController();
-  bool _isResendButtonEnabled = true;
-  String? _generatedOtp; // OTP yang dihasilkan
+  bool _isResendButtonEnabled = true; // State untuk tombol kirim ulang
 
-  @override
-  void initState() {
-    super.initState();
-    _sendOtpToEmail(); // Kirim OTP saat halaman pertama kali dimuat
-  }
-
-  void _sendOtpToEmail() async {
-    setState(() {
-      _isResendButtonEnabled = false;
-    });
-
-    // Menghasilkan OTP secara acak
-    _generatedOtp = _generateOtp();
-
+  void _verifyOtp() async {
     try {
-      // Di sini Anda bisa menggunakan layanan email untuk mengirim OTP
-      // Contoh sederhana menggunakan clipboard (untuk pengujian)
-      Clipboard.setData(ClipboardData(text: _generateOtp()));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('OTP telah dikirim ke email: ${widget.email}')),
+      // Mendapatkan kredensial dengan OTP yang dimasukkan
+      final credential = PhoneAuthProvider.credential(
+        verificationId: widget.verificationId,
+        smsCode: _otpController.text,
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengirim OTP')),
-      );
-    } finally {
-      setState(() {
-        _isResendButtonEnabled = true;
-      });
-    }
-  }
 
-  String _generateOtp() {
-    final random = Random();
-    final otp = random.nextInt(900000) + 100000; // Menghasilkan OTP 6 digit
-    return otp.toString();
-  }
+      // Menyelesaikan proses login menggunakan kredensial
+      await FirebaseAuth.instance.signInWithCredential(credential);
 
-  void _verifyOtp() {
-    if (_otpController.text == _generatedOtp) {
+      // Navigasi ke halaman verifikasi sukses
       Navigator.pushReplacementNamed(context, '/verification-success');
-    } else {
+    } catch (e) {
+      // Tangani kesalahan jika verifikasi gagal
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kode OTP tidak valid')),
+        SnackBar(content: Text('Kode OTP tidak valid')),
       );
     }
   }
 
   void _resendOtp() async {
-    _sendOtpToEmail();
+    setState(() {
+      _isResendButtonEnabled = false;
+    });
+
+    // Mengirim ulang kode OTP
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: widget.phone,
+      verificationCompleted: (PhoneAuthCredential credential) {},
+      verificationFailed: (FirebaseAuthException e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim ulang kode OTP')),
+        );
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        setState(() {
+          _isResendButtonEnabled = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kode OTP telah dikirim ulang')),
+        );
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/bg.png'), // Gambar latar belakang
             fit: BoxFit.cover,
@@ -91,8 +84,8 @@ class _VerificationPageState extends State<VerificationPage> {
                     height: 150.0,
                     width: 150.0,
                   ),
-                  const SizedBox(height: 20.0),
-                  const Text(
+                  SizedBox(height: 20.0),
+                  Text(
                     'Verifikasi OTP',
                     style: TextStyle(
                       fontSize: 24.0,
@@ -100,20 +93,20 @@ class _VerificationPageState extends State<VerificationPage> {
                       color: Color(0xFF62E703),
                     ),
                   ),
-                  const SizedBox(height: 10.0),
+                  SizedBox(height: 10.0),
                   Text(
-                    'Kode OTP telah dikirim ke ${widget.email}',
-                    style: const TextStyle(
+                    'Kode OTP telah dikirim ke ${widget.phone}',
+                    style: TextStyle(
                       fontSize: 16.0,
                       color: Colors.black,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 20.0),
+                  SizedBox(height: 20.0),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         'Tidak menerima OTP?',
                         style: TextStyle(color: Colors.black),
                       ),
@@ -123,7 +116,7 @@ class _VerificationPageState extends State<VerificationPage> {
                           'Kirim Ulang',
                           style: TextStyle(
                             color: _isResendButtonEnabled
-                                ? const Color(0xFF62E703)
+                                ? Color(0xFF62E703)
                                 : Colors.grey,
                             fontWeight: FontWeight.bold,
                           ),
@@ -131,13 +124,13 @@ class _VerificationPageState extends State<VerificationPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10.0),
+                  SizedBox(height: 10.0),
                   Container(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(
                           0.8), // Transparansi untuk konten di atas gambar
-                      border: Border.all(color: const Color(0xFF0B4D3B)),
+                      border: Border.all(color: Color(0xFF0B4D3B)),
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     child: Column(
@@ -162,23 +155,23 @@ class _VerificationPageState extends State<VerificationPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20.0),
+                  SizedBox(height: 20.0),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _verifyOtp,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF62E703),
-                        padding: const EdgeInsets.symmetric(vertical: 15.0),
+                        backgroundColor: Color(0xFF62E703),
+                        padding: EdgeInsets.symmetric(vertical: 15.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.0),
                         ),
-                        textStyle: const TextStyle(
+                        textStyle: TextStyle(
                           fontSize: 16.0,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: const Text('Verifikasi'),
+                      child: Text('Verifikasi'),
                     ),
                   ),
                 ],

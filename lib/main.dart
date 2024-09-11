@@ -9,6 +9,7 @@ import 'package:biumerch_mobile_app/modul1/login.dart';
 import 'package:biumerch_mobile_app/modul2/penjual_toko.dart';
 import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:biumerch_mobile_app/modul2/tokobaru.dart';
+import 'package:biumerch_mobile_app/modul3/listChatPembeli.dart';
 import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -95,10 +96,11 @@ class MyApp extends StatelessWidget {
         '/sellerProfile': (context) => const SellerProfileScreen(storeId: ''), // Sesuaikan dengan logika
         '/formatif': (context) => const FormatifPage(),
         '/tokobaru': (context) => const TokoBaruPage(), // Tambahkan route untuk TokoBaruPage
+        '/listChatPembeli': (context) => const ListChatPembeli(), 
         '/riwayat': (context) =>  HistoryPage(),
         '/verification': (context) => VerificationPage(
               verificationId: '', // Placeholder, will be set during navigation
-              phone: '', verification: '', email: '', // Placeholder, will be set during navigation
+              phone: '',// Placeholder, will be set during navigation
             ),
         '/verification_success': (context) => VerificationSuccessPage(),
         '/forgot_password': (context) => ForgotPasswordPage(), // Tambahkan route untuk halaman lupa password

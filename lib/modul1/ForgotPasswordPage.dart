@@ -1,9 +1,8 @@
+import 'package:biumerch_mobile_app/modul1/CekImelPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
-
   @override
   _ForgotPasswordPageState createState() => _ForgotPasswordPageState();
 }
@@ -18,7 +17,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     // Validasi format email
     if (!_validateEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Format email tidak valid')),
+        SnackBar(content: Text('Format email tidak valid')),
       );
       return;
     }
@@ -26,7 +25,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await _auth.sendPasswordResetEmail(email: email);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link reset kata sandi sudah dikirim ke email')),
+        SnackBar(content: Text('Link reset kata sandi sudah dikirim ke email')),
+      );
+
+      // Navigasi ke halaman CekEmailPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => CekEmailPage()),
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,7 +52,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/BGLogin.png'), // Gambar latar belakang
             fit: BoxFit.cover,
@@ -55,84 +60,90 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Image.asset('assets/lupa_pw.png',
-                        height: 40), // Ganti dengan path logo Anda
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Pemulihan Akun',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0B4D3B),
-                        fontFamily: 'Nunito',
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Image.asset('assets/lupa_pw.png',
+                          height: 40), // Ganti dengan path logo Anda
+                      SizedBox(width: 10),
+                      Text(
+                        'Pemulihan Akun',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0B4D3B),
+                          fontFamily: 'Nunito',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 60),
-                const Text(
-                  'Temukan akunmu',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF5F5F5F),
-                    fontFamily: 'Nunito',
+                    ],
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      hintText: 'Masukkan email',
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Color(0xFFF3F3F3), // Background input
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: Icon(Icons.email, color: Color(0xFF5F5F5F)),
-                      ),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  SizedBox(height: 60),
+                  Text(
+                    'Temukan akunmu',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF5F5F5F),
                       fontFamily: 'Nunito',
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _resetPassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF62E703), // Background color
-                      padding: const EdgeInsets.symmetric(vertical: 15.0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
+                  SizedBox(height: 20),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        hintText: 'Masukkan email',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Color(0xFFF3F3F3), // Background input
+                        prefixIcon: Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: Icon(Icons.email, color: Color(0xFF5F5F5F)),
+                        ),
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 16.0,
+                      keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Nunito',
                       ),
                     ),
-                    child: const Text(
-                      'Temukan',
-                      style: TextStyle(color: Colors.white),
+                  ),
+                  SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height:
+                        57.0, // Mengatur tinggi tombol agar sesuai dengan tombol login
+                    child: ElevatedButton(
+                      onPressed: _resetPassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Color(0xFF62E703), // Warna latar belakang tombol
+                        padding: EdgeInsets.symmetric(vertical: 15.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                      ),
+                      child: Text(
+                        'Temukan',
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

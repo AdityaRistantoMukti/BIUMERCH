@@ -3,28 +3,26 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class ListChat extends StatefulWidget {
-  final String storeId;
-
-  const ListChat({super.key, required this.storeId});
+class ListChatPembeli extends StatefulWidget {
+  const ListChatPembeli({super.key});
 
   @override
-  _ListChatState createState() => _ListChatState();
+  _ListChatPembeliState createState() => _ListChatPembeliState();
 }
 
-class _ListChatState extends State<ListChat> {
-  final User? currentUser = FirebaseAuth.instance.currentUser;
+class _ListChatPembeliState extends State<ListChatPembeli> {
+  final User? currentUser = FirebaseAuth.instance.currentUser; // Mendapatkan user yang sedang login
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: const Text('Daftar Chat Toko'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('rooms')
-            .where('sellerUID', isEqualTo: widget.storeId)
+            .where('buyerUID', isEqualTo: currentUser?.uid) // Hanya room di mana pembeli adalah pengguna yang login
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
@@ -35,7 +33,7 @@ class _ListChatState extends State<ListChat> {
             itemBuilder: (context, index) {
               DocumentSnapshot roomDocument = snapshot.data!.docs[index];
 
-              // Check if the product associated with the chat room exists
+              // Check if the product associated with the chat room still exists
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
                     .collection('products')
@@ -47,10 +45,10 @@ class _ListChatState extends State<ListChat> {
                   // If the product does not exist, delete the chat room
                   if (!productSnapshot.data!.exists) {
                     _deleteChatRoom(roomDocument.id);
-                    return const SizedBox(); // Don't display deleted rooms
+                    return const SizedBox(); // Do not show the room if deleted
                   }
 
-                  // If the product exists, proceed with the normal chat list display
+                  // Stream for the last message in the room
                   return StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('rooms')
@@ -61,66 +59,53 @@ class _ListChatState extends State<ListChat> {
                         .snapshots(),
                     builder: (context, messageSnapshot) {
                       if (!messageSnapshot.hasData || messageSnapshot.data!.docs.isEmpty) {
-                        return const SizedBox(); // If no messages, show nothing
+                        return const SizedBox(); // Jika tidak ada pesan
                       }
 
                       DocumentSnapshot lastMessageDoc = messageSnapshot.data!.docs.first;
                       String lastMessage = lastMessageDoc['message'];
                       String lastSenderUID = lastMessageDoc['senderUID'];
 
-                      // Get buyer data
+                      // Ambil data nama toko (storeName) dari koleksi stores berdasarkan sellerUID
                       return FutureBuilder<DocumentSnapshot>(
                         future: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(roomDocument['buyerUID'])
+                            .collection('stores')
+                            .doc(roomDocument['sellerUID'])
                             .get(),
-                        builder: (context, buyerSnapshot) {
-                          if (!buyerSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+                        builder: (context, storeSnapshot) {
+                          if (!storeSnapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-                          String buyerName = buyerSnapshot.data!['username'];
+                          String storeName = storeSnapshot.data!['storeName'];
 
-                          // Fetch the store name
-                          return FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance
-                                .collection('stores')
-                                .doc(widget.storeId) // Fetch using storeId
-                                .get(),
-                            builder: (context, storeSnapshot) {
-                              if (!storeSnapshot.hasData) return const SizedBox();
+                          // Tentukan label apakah pengirim terakhir adalah Anda atau Toko
+                          String senderLabel = lastSenderUID == currentUser?.uid ? "Anda" : storeName;
 
-                              String storeName = storeSnapshot.data!['storeName'];
-
-                              String senderLabel = lastSenderUID == currentUser?.uid ? "Anda" : "Pembeli";
-
-                              return ListTile(
-                                title: Text(buyerName),
-                                subtitle: Row(
-                                  children: [
-                                    Text(
-                                      "$senderLabel: ",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(lastMessage),
-                                    ),
-                                  ],
+                          return ListTile(
+                            title: Text(storeName), // Nama toko
+                            subtitle: Row(
+                              children: [
+                                Text(
+                                  "$senderLabel: ", // Label pengirim apakah Anda atau Toko
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                onTap: () {
-                                  // Navigate to the individual chat screen
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => HalamanChatPenjual(
-                                        roomId: roomDocument.id,
-                                        buyerUID: roomDocument['buyerUID'],
-                                        sellerUID: roomDocument['sellerUID'],
-                                        storeName: storeName,
-                                      ),
-                                    ),
-                                  );
-                                },
+                                Expanded(
+                                  child: Text(lastMessage), // Tampilkan isi pesan terakhir
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => HalamanChatPenjual(
+                                    roomId: roomDocument.id,
+                                    buyerUID: roomDocument['buyerUID'],
+                                    sellerUID: roomDocument['sellerUID'],
+                                    storeName: storeName, // Pass storeName here
+                                  ),
+                                ),
                               );
                             },
                           );
