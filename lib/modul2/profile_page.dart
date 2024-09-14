@@ -241,7 +241,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               Icon(Icons.account_balance_wallet, color: Colors.green),
                               SizedBox(height: 8),
                               Text('Saldo Saya', style: TextStyle(color: Colors.green)),
-                              Text('Rp. 1250.000', style: TextStyle(color: Colors.green)),
+                              Text('Rp. 0', style: TextStyle(color: Colors.green)),
                             ],
                           ),
                         ),
@@ -273,52 +273,51 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 16),
                   const Divider(),
                   Expanded(
-  child: ListView(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-    children: [
-      ListTile(
-        leading: const Icon(Icons.receipt),
-        title: const Text(
-          'Riwayat Pesanan',
-          style: TextStyle(color: Color(0xFF194D42)),
-        ),
-        onTap: () {
-          Navigator.pushNamed(context, '/riwayat');
-        },
-      ),
-      ListTile(
-        leading: const Icon(Icons.help_center),
-        title: const Text(
-          'Pusat Bantuan',
-          style: TextStyle(color: Color(0xFF194D42)),
-        ),
-        onTap: () {
-          Navigator.pushNamed(context, '/chatpage');
-        },
-      ),
-      ListTile(
-        leading: const Icon(Icons.chat), // Menambahkan ikon chat
-        title: const Text(
-          'Chat',
-          style: TextStyle(color: Color(0xFF194D42)),
-        ),
-        onTap: () {
-          Navigator.pushNamed(context, '/listChatPembeli'); // Arahkan ke halaman listChatPembeli
-        },
-      ),
-      ListTile(
-        leading: const Icon(Icons.exit_to_app),
-        title: const Text(
-          'Keluar',
-          style: TextStyle(color: Color(0xFF194D42)),
-        ),
-        onTap: _confirmLogout,
-      ),
-    ],
-  ),
-),
-
+                    child: ListView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(), // Disable scrolling
+                      children: [                        
+                        ListTile(
+                          leading: const Icon(Icons.receipt),
+                          title: const Text(
+                            'Riwayat Pesanan',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/riwayat');
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.help_center),
+                          title: const Text(
+                            'Pusat Bantuan',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/chatpage');
+                          },
+                        ),
+                         ListTile(
+                          leading: const Icon(Icons.chat), // Menambahkan ikon chat
+                          title: const Text(
+                            'Chat',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: () {
+                            Navigator.pushNamed(context, '/listChatPembeli'); // Arahkan ke halaman listChatPembeli
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.exit_to_app),
+                          title: const Text(
+                            'Keluar',
+                            style: TextStyle(color: Color(0xFF194D42)),
+                          ),
+                          onTap: _confirmLogout,
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             )
@@ -345,5 +344,3 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
-
-

@@ -31,7 +31,92 @@ class HalamanChatPenjual extends StatefulWidget {
 
 class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
   final TextEditingController _messageController = TextEditingController();
-  bool _isProductCardSent = false; // Flag untuk melacak apakah kartu produk telah dikirim
+  final ScrollController _scrollController = ScrollController(); // Tambahkan ScrollController untuk auto-scroll
+  bool _isProductCardSent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _markMessagesAsRead(widget.roomId); // Tandai pesan sebagai dibaca saat chat dibuka
+    _scrollToBottom(); // Scroll otomatis ke bawah saat chat dimulai
+  }
+
+  // Fungsi untuk scroll otomatis ke pesan terbaru
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _markMessagesAsRead(String roomId) {
+    FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(roomId)
+        .collection('messages')
+        .where('isRead', isEqualTo: false)
+        .where('senderUID', isNotEqualTo: FirebaseAuth.instance.currentUser?.uid)
+        .get()
+        .then((querySnapshot) {
+      for (var doc in querySnapshot.docs) {
+        doc.reference.update({'isRead': true});
+      }
+    }).catchError((error) {
+      print("Error updating isRead: $error");
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    String message = _messageController.text.trim();
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      CollectionReference messagesRef = FirebaseFirestore.instance
+          .collection('rooms')
+          .doc(widget.roomId)
+          .collection('messages');
+
+      if (!_isProductCardSent && widget.draftProductId != null) {
+        await messagesRef.add({
+          'senderUID': user.uid,
+          'message': {
+            'image': widget.draftProductImage,
+            'name': widget.draftProductName,
+            'price': widget.draftProductPrice,
+          },
+          'type': 'product_card',
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+        });
+
+        _isProductCardSent = true;
+        setState(() {});
+      }
+
+      await messagesRef.add({
+        'senderUID': user.uid,
+        'message': message,
+        'type': 'text',
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+
+      FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).update({
+        'lastMessage': message,
+        'lastMessageTimestamp': FieldValue.serverTimestamp(),
+      });
+
+      _messageController.clear();
+      _scrollToBottom(); // Scroll otomatis ke bawah setelah pesan dikirim
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +128,13 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
       ),
       body: Column(
         children: [
-          // Chat messages section
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('rooms')
                   .doc(widget.roomId)
                   .collection('messages')
-                  .orderBy('timestamp', descending: true)
+                  .orderBy('timestamp', descending: false) // Urutkan dari yang terlama ke yang terbaru
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
@@ -67,8 +151,12 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
 
                 var messages = snapshot.data!.docs;
 
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom(); // Scroll otomatis ke bawah saat pesan baru masuk
+                });
+
                 return ListView.builder(
-                  reverse: true,
+                  controller: _scrollController, // Kontrol untuk scroll otomatis
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     var message = messages[index];
@@ -92,11 +180,9 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
             ),
           ),
 
-          // Jika ada produk draft, tampilkan di atas input pesan
           if (widget.draftProductId != null && !_isProductCardSent)
             _buildDraftProductCard(), // Menampilkan kartu produk yang akan dikirim
 
-          // Input untuk mengirim pesan
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -126,7 +212,6 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
     );
   }
 
-  // Widget untuk menampilkan produk dalam draft
   Widget _buildDraftProductCard() {
     return Container(
       width: double.infinity,
@@ -172,51 +257,6 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
         ],
       ),
     );
-  }
-
-  Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
-
-    String message = _messageController.text.trim();
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      CollectionReference messagesRef = FirebaseFirestore.instance
-          .collection('rooms')
-          .doc(widget.roomId)
-          .collection('messages');
-
-      // Jika produk belum terkirim, kirim produk draft terlebih dahulu
-      if (!_isProductCardSent && widget.draftProductId != null) {
-        await messagesRef.add({
-          'senderUID': user.uid,
-          'message': {
-            'image': widget.draftProductImage,
-            'name': widget.draftProductName,
-            'price': widget.draftProductPrice,
-          },
-          'type': 'product_card',
-          'timestamp': Timestamp.now(),
-        });
-
-        _isProductCardSent = true; // Setelah terkirim, update flag
-        setState(() {}); // Perbarui tampilan untuk menghapus draft produk
-      }
-
-      await messagesRef.add({
-        'senderUID': user.uid,
-        'message': message,
-        'type': 'text',
-        'timestamp': Timestamp.now(),
-      });
-
-      FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).update({
-        'lastMessage': message,
-        'lastMessageTimestamp': Timestamp.now(),
-      });
-
-      _messageController.clear();
-    }
   }
 
   Widget _buildTextMessage(bool isSender, String messageText) {
@@ -292,5 +332,3 @@ class _HalamanChatPenjualState extends State<HalamanChatPenjual> {
     );
   }
 }
-
-

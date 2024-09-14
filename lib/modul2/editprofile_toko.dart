@@ -133,20 +133,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: <Widget>[
                   GestureDetector(
                     onTap: _isLoading ? null : _pickImage, // Nonaktifkan saat loading
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage: _imageFile != null
-                          ? FileImage(_imageFile!)
-                          : (widget.imagePath.startsWith('http')
-                              ? NetworkImage(widget.imagePath)
-                              : AssetImage(widget.imagePath)) as ImageProvider,
-                      child: _imageFile == null
-                          ? const Icon(
-                              Icons.camera_alt,
-                              size: 50,
-                              color: Color.fromARGB(255, 237, 241, 238),
-                            )
-                          : null,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.5),
+                            spreadRadius: 5, // Shading lebih kuat
+                            blurRadius: 7,
+                            offset: const Offset(0, 4), // Mengatur posisi bayangan
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 55, // Membesarkan sedikit radius
+                        backgroundImage: _imageFile != null
+                            ? FileImage(_imageFile!)
+                            : (widget.imagePath.startsWith('http')
+                                ? NetworkImage(widget.imagePath)
+                                : AssetImage(widget.imagePath)) as ImageProvider,
+                        child: _imageFile == null
+                            ? const Icon(
+                                Icons.camera_alt,
+                                size: 50,
+                                color: Color.fromARGB(255, 237, 241, 238),
+                              )
+                            : null,
+                      ),
                     ),
                   ),
                   if (_imageFile != null) ...[
@@ -157,12 +170,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  TextFormField(
+                  _buildTextFormField(
+                    label: 'Nama Toko',
                     controller: _namaTokoController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Toko',
-                      border: OutlineInputBorder(),
-                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Masukkan nama toko';
@@ -171,12 +181,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  _buildTextFormField(
+                    label: 'Email',
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Masukkan email';
@@ -187,12 +194,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  _buildTextFormField(
+                    label: 'No HP',
                     controller: _noHpController,
-                    decoration: const InputDecoration(
-                      labelText: 'No HP',
-                      border: OutlineInputBorder(),
-                    ),
                     keyboardType: TextInputType.phone,
                     validator: (value) {
                       if (value != null && value.isNotEmpty && !RegExp(r'^[0-9-]+$').hasMatch(value)) {
@@ -269,6 +273,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required String label,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    FormFieldValidator<String>? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            shadows: [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.grey,
+                offset: Offset(1.0, 1.0),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.teal, width: 1),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              fillColor: Colors.grey[200],
+              filled: true,
+            ),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+            validator: validator,
+          ),
+        ),
+      ],
     );
   }
 

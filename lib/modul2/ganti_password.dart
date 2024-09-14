@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// Pastikan sudah mengimpor halaman EditProfilePage
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -129,68 +128,37 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      _buildPasswordField(
                         controller: _oldPasswordController,
+                        label: 'Password Lama',
                         obscureText: _obscureOldPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password Lama',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscureOldPassword
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () {
-                              setState(() {
-                                _obscureOldPassword = !_obscureOldPassword;
-                              });
-                            },
-                          ),
-                        ),
+                        onVisibilityToggle: () {
+                          setState(() {
+                            _obscureOldPassword = !_obscureOldPassword;
+                          });
+                        },
                       ),
                       const SizedBox(height: 16),
-                      TextField(
+                      _buildPasswordField(
                         controller: _newPasswordController,
+                        label: 'Password Baru',
                         obscureText: _obscureNewPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password Baru',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscureNewPassword
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () {
-                              setState(() {
-                                _obscureNewPassword = !_obscureNewPassword;
-                              });
-                            },
-                          ),
-                        ),
+                        onVisibilityToggle: () {
+                          setState(() {
+                            _obscureNewPassword = !_obscureNewPassword;
+                          });
+                        },
                       ),
                       const SizedBox(height: 16),
-                      TextField(
+                      _buildPasswordField(
                         controller: _confirmPasswordController,
+                        label: 'Konfirmasi Password',
                         obscureText: _obscureConfirmPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Konfirmasi Password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscureConfirmPassword
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () {
-                              setState(() {
-                                _obscureConfirmPassword =
-                                    !_obscureConfirmPassword;
-                              });
-                            },
-                          ),
-                        ),
+                        onVisibilityToggle: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -208,10 +176,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         },
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.black,
-                          backgroundColor:
-                              Colors.grey[200], // Warna latar tombol Batal
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16.0),
+                          backgroundColor: Colors.grey[200], // Warna latar tombol Batal
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8.0),
                           ),
@@ -223,13 +189,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed:
-                            _isLoading ? null : _changePassword, // Cek loading
+                        onPressed: _isLoading ? null : _changePassword,
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.white,
                           backgroundColor: Colors.green, // Warna tombol Simpan
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16.0),
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8.0),
                           ),
@@ -247,8 +211,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               color: Colors.black54,
               child: const Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.green), // Warna loading
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green), // Warna loading
                 ),
               ),
             ),
@@ -256,5 +219,69 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
     );
   }
-}
 
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscureText,
+    required VoidCallback onVisibilityToggle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.teal,
+            shadows: [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.grey,
+                offset: Offset(1.0, 1.0),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.teal, width: 1),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off),
+                onPressed: onVisibilityToggle,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              fillColor: Colors.grey[200],
+              filled: true,
+            ),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+        ),
+      ],
+    );
+  }
+}

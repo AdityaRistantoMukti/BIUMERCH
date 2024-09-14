@@ -85,6 +85,13 @@ flutter:
     - assets/images/geprek.png
     - assets/images/katsu.png
     - assets/images/senja.jpg
+    - assets/images/bri_logo.jpeg
+    - assets/images/bca_logo.jpeg
+    - assets/images/mandiri_logo.jpeg
+    - assets/images/bni_logo.jpeg
+    - assets/images/btn_logo.jpeg
+    - assets/images/dana_logo.jpeg
+    - assets/images/gopay_logo.jpeg
     - assets/icons/WA.jpg
     - assets/patternn1.png
     - assets/ic_outline-message.svg

@@ -195,7 +195,7 @@ class _FoodDetailPageState extends State<FoodDetailPage>
                   'sellerUID': sellerUID,
                   'productId': widget.productId,
                   'lastMessage': '',
-                  'lastMessageTimestamp': Timestamp.now(),
+                  'lastMessageTimestamp': FieldValue.serverTimestamp(),
                 });
 
                 // Auto-send the product image and message
@@ -234,11 +234,11 @@ class _FoodDetailPageState extends State<FoodDetailPage>
       'sellerUID': sellerUID,
       'productId': widget.productId,
       'lastMessage': '',
-      'lastMessageTimestamp': Timestamp.now(),
+      'lastMessageTimestamp': FieldValue.serverTimestamp(),
     });
 
     // Kirim pengguna ke halaman chat dengan draft product
-    Navigator.push(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (context) => HalamanChatPenjual(
@@ -252,10 +252,11 @@ class _FoodDetailPageState extends State<FoodDetailPage>
           draftProductPrice: widget.price,
         ),
       ),
+      (route) => false, // Menyatakan bahwa seluruh stack akan dihapus, kecuali yang baru dipush
     );
-  } else {
+
     // Jika room sudah ada, langsung navigasikan ke chat dengan draft product
-    Navigator.push(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (context) => HalamanChatPenjual(
@@ -269,7 +270,8 @@ class _FoodDetailPageState extends State<FoodDetailPage>
           draftProductPrice: widget.price,
         ),
       ),
-    );
+      (route) => false, // Menyatakan bahwa seluruh stack akan dihapus, kecuali yang baru dipush
+    );    
   }
 }
 
@@ -289,7 +291,8 @@ Future<void> _sendProductCardAndMessage(String roomId) async {
       'price': widget.price,
     },
     'type': 'product_card', // We are defining a new message type
-    'timestamp': Timestamp.now(),
+    'timestamp': FieldValue.serverTimestamp(),
+    'isRead': false,
   });
 
   // Sending follow-up text message
@@ -297,13 +300,14 @@ Future<void> _sendProductCardAndMessage(String roomId) async {
     'senderUID': currentUser!.uid,
     'message': "Apakah produk ini masih tersedia?",
     'type': 'text',
-    'timestamp': Timestamp.now(),
+    'timestamp': FieldValue.serverTimestamp(),
+    'isRead': false,
   });
 
   // Update the room's last message
   await FirebaseFirestore.instance.collection('rooms').doc(roomId).update({
     'lastMessage': "Apakah produk ini masih tersedia?",
-    'lastMessageTimestamp': Timestamp.now(),
+    'lastMessageTimestamp': FieldValue.serverTimestamp(),
   });
 }
 

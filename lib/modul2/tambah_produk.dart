@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 class ProductFormScreen extends StatefulWidget {
   final String storeId;
 
-  const ProductFormScreen({super.key, required this.storeId});
+  const ProductFormScreen({super.key, required this.storeId, required productId});
 
   @override
   _ProductFormScreenState createState() => _ProductFormScreenState();
@@ -17,14 +17,21 @@ class ProductFormScreen extends StatefulWidget {
 class _ProductFormScreenState extends State<ProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
   String _productName = '';
-  String _price = '';
   String _stock = '';
   String _category = 'Makanan & Minuman';
   String _description = '';
   final String _rating = '';
   final List<File?> _images = [null, null, null];
-  final _numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
-  bool _isLoading = false;  // Tambahkan state untuk loading
+  bool _isLoading = false;
+
+  final TextEditingController _priceController = TextEditingController();
+  final NumberFormat _numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: ' ', decimalDigits: 0);
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,131 +47,92 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       ),
       body: Stack(
         children: [
-          Padding(
+          SingleChildScrollView( // Menambahkan scroll view untuk memperpanjang frame utama
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: <Widget>[
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: ListView(
-                      children: <Widget>[
-                        TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: 'Nama Produk',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.all(12.0),
-                          ),
-                          onSaved: (value) {
-                            _productName = value ?? '';
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Nama Produk tidak boleh kosong';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: 'Harga',
-                            prefixText: 'Rp ',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.all(12.0),
-                          ),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            setState(() {
-                              _price = value.replaceAll('.', ''); // Hapus titik
-                            });
-                          },
-                          onSaved: (value) {
-                            _price = value ?? '';
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Harga tidak boleh kosong';
-                            }
-                            if (int.tryParse(value.replaceAll('.', '')) == null) {
-                              return 'Harga tidak valid';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: 'Stok',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.all(12.0),
-                          ),
-                          keyboardType: TextInputType.number,
-                          onSaved: (value) {
-                            _stock = value ?? '';
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Stok tidak boleh kosong';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: _category,
-                          items: <String>[
-                            'Makanan & Minuman',
-                            'Perlengkapan',
-                            'Jasa'
-                          ].map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: <Widget>[
+                      _buildTextFormField(
+                        label: 'Nama Produk',
+                        fontSize: 14,  // Mengecilkan ukuran font
+                        onSaved: (value) => _productName = value ?? '',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Nama Produk tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextFormField(
+                        label: 'Harga',
+                        controller: _priceController,
+                        fontSize: 14,  // Mengecilkan ukuran font
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          String cleanedValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                          if (cleanedValue.isNotEmpty) {
+                            int valueInt = int.parse(cleanedValue);
+                            String formattedValue = _numberFormat.format(valueInt);
+                            _priceController.value = TextEditingValue(
+                              text: formattedValue,
+                              selection: TextSelection.collapsed(offset: formattedValue.length),
                             );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _category = value!;
-                            });
-                          },
-                          decoration: const InputDecoration(
-                            labelText: 'Kategori',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.all(12.0),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: 'Deskripsi',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.all(12.0),
-                          ),
-                          maxLines: 3,
-                          onSaved: (value) {
-                            _description = value ?? '';
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Deskripsi tidak boleh kosong';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        const Text('Foto Produk', style: TextStyle(fontSize: 16)),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            _buildPhotoUploadButton(0),
-                            _buildPhotoUploadButton(1),
-                            _buildPhotoUploadButton(2),
-                          ],
-                        ),
-                      ],
-                    ),
+                          }
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Harga tidak boleh kosong';
+                          }
+                          if (int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) == null) {
+                            return 'Harga tidak valid';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextFormField(
+                        label: 'Stok',
+                        fontSize: 14,  // Mengecilkan ukuran font
+                        keyboardType: TextInputType.number,
+                        onSaved: (value) => _stock = value ?? '',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Stok tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDropdownFormField(),  // Menggunakan metode untuk dropdown yang serupa dengan form input lainnya
+                      const SizedBox(height: 16),
+                      _buildTextFormField(
+                        label: 'Deskripsi',
+                        maxLines: 3,
+                        onSaved: (value) => _description = value ?? '',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Deskripsi tidak boleh kosong';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Foto Produk', style: TextStyle(fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          _buildPhotoUploadButton(0),
+                          _buildPhotoUploadButton(1),
+                          _buildPhotoUploadButton(2),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -175,7 +143,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               color: Colors.black54,
               child: const Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFF319F43), // Warna hijau sesuai permintaan
+                  color: Color(0xFF319F43),
                 ),
               ),
             ),
@@ -187,45 +155,33 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: _isLoading ? null : () {
-                  Navigator.pop(context);
-                },
+                onPressed: _isLoading ? null : () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: Colors.white,
                   side: const BorderSide(color: Colors.black),
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text(
                   'Batal',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.black, fontSize: 16),
                 ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveForm, // Nonaktifkan tombol jika sedang loading
+                onPressed: _isLoading ? null : _saveForm,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF32CD32), // Gunakan warna hijau neon
+                  backgroundColor: const Color(0xFF32CD32),
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
                         'Simpan',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
               ),
             ),
@@ -235,15 +191,156 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
   }
 
+  // Form Input dengan custom fontSize
+  Widget _buildTextFormField({
+    required String label,
+    TextEditingController? controller,
+    TextInputType keyboardType = TextInputType.text,
+    FormFieldValidator<String>? validator,
+    FormFieldSetter<String>? onSaved,
+    ValueChanged<String>? onChanged,
+    int maxLines = 1,
+    double fontSize = 16,  // Tambahan untuk custom font size
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            shadows: const [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.grey,
+                offset: Offset(1.0, 1.0),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.teal, width: 1),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              fillColor: Colors.grey[200],
+              filled: true,
+            ),
+            style: TextStyle(fontSize: fontSize, color: Colors.black87),
+            onSaved: onSaved,
+            onChanged: onChanged,
+            validator: validator,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // DropdownFormField dengan styling yang sama
+  Widget _buildDropdownFormField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Kategori',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            shadows: [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.grey,
+                offset: Offset(1.0, 1.0),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: DropdownButtonFormField<String>(
+            value: _category,
+            items: <String>['Makanan & Minuman', 'Perlengkapan', 'Jasa'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _category = value!;
+              });
+            },
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              filled: true,
+            ),
+            style: const TextStyle(color: Colors.black),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Fungsi untuk tombol upload gambar
   Widget _buildPhotoUploadButton(int index) {
     return GestureDetector(
-      onTap: _isLoading ? null : () => _confirmUpload(index), // Nonaktifkan upload jika sedang loading
+      onTap: _isLoading ? null : () => _confirmUpload(index),
       child: Container(
         width: 100,
         height: 100,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: _images[index] == null
             ? const Column(
@@ -255,7 +352,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ],
               )
             : ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 child: Image.file(_images[index]!, fit: BoxFit.cover),
               ),
       ),
@@ -272,13 +369,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(false); // Tidak upload
+                Navigator.of(context).pop(false);
               },
               child: const Text('Tidak'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(true); // Konfirmasi upload
+                Navigator.of(context).pop(true);
               },
               child: const Text('Ya'),
             ),
@@ -294,8 +391,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   Future<void> _pickImage(int index) async {
     final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile =
-        await picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _images[index] = File(pickedFile.path);
@@ -308,8 +404,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     final storageRef = FirebaseStorage.instance.ref().child('product_images/$fileName');
     final uploadTask = storageRef.putFile(image);
     final snapshot = await uploadTask;
-
-    // Dapatkan URL gambar yang diupload
     final downloadUrl = await snapshot.ref.getDownloadURL();
     return downloadUrl;
   }
@@ -317,12 +411,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = true;  // Tampilkan loading
+        _isLoading = true;
       });
-    
-      _formKey.currentState!.save();
 
-      // Generate a new product ID
+      _formKey.currentState!.save();
       final productId = FirebaseFirestore.instance.collection('products').doc().id;
 
       List<String> imageUrls = [];
@@ -333,10 +425,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         }
       }
 
-      // Create a map for the product
       Map<String, dynamic> product = {
         'name': _productName,
-        'price': _price,
+        'price': _priceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
         'stock': _stock,
         'category': _category,
         'description': _description,
@@ -345,15 +436,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         'rating': '1.0',
       };
 
-      // Save the product data to Firestore
       await FirebaseFirestore.instance.collection('products').doc(productId).set(product);
 
       setState(() {
-        _isLoading = false;  // Sembunyikan loading
+        _isLoading = false;
       });
 
-      // Navigate back to the seller's store screen
-      Navigator.pop(context, true);  // Kembali dan berikan tanda produk berhasil ditambahkan
+      Navigator.pop(context, true);
     }
   }
 }

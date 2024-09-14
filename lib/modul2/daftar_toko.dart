@@ -58,7 +58,6 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
           await _uploadImage(_selectedImage!);
         }
 
-        // Ambil user ID dari pengguna yang sudah login
         String ownerId = FirebaseAuth.instance.currentUser!.uid;
 
         DocumentReference docRef = await FirebaseFirestore.instance.collection('stores').add({
@@ -75,7 +74,7 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
 
         await docRef.update({'idstore': docRef.id});
 
-        _showSuccessDialog(); // Tampilkan pop-up setelah berhasil
+        _showSuccessDialog();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal menyimpan data: $e')),
@@ -98,8 +97,8 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Tutup dialog
-                Navigator.pushReplacementNamed(context, '/profile'); // Kembali ke halaman ProfilePage
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/profile');
               },
               child: const Text('OK'),
             ),
@@ -112,9 +111,7 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Toko'),
-      ),
+      appBar: _buildAppBar(),
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -124,31 +121,52 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 20),
                   Center(
                     child: GestureDetector(
                       onTap: _pickImage,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: _selectedImage != null
-                            ? FileImage(_selectedImage!)
-                            : const AssetImage('assets/store_image.png')
-                                as ImageProvider,
-                        child: _selectedImage == null
-                            ? const Icon(Icons.camera_alt, size: 50, color: Colors.white)
-                            : null,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              spreadRadius: 2,
+                              blurRadius: 6,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 55,
+                          backgroundColor: Colors.grey[300],
+                          backgroundImage: _selectedImage != null
+                              ? FileImage(_selectedImage!)
+                              : const AssetImage('assets/store_image.png') as ImageProvider,
+                          child: Stack(
+                            children: [
+                              if (_selectedImage == null)
+                                const Center(
+                                  child: Icon(Icons.camera_alt, size: 50, color: Colors.white),
+                                ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: Colors.white,
+                                  child: Icon(Icons.edit, color: const Color(0xFF62E703)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 32),
-                  const Text(
-                    'Nama Toko',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
+                  _buildTextFormField(
+                    label: 'Nama Toko',
                     onSaved: (value) => _storeName = value,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -158,37 +176,10 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Deskripsi Toko',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
-                    onSaved: (value) => _storeDescription = value,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Deskripsi Toko tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Nomor Telepon',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    keyboardType: TextInputType.number, // Mengatur keyboard hanya untuk angka
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly // Membatasi input hanya angka
-                    ],
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
+                  _buildTextFormField(
+                    label: 'No. Telpon',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onSaved: (value) => _phoneNumber = value,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -198,19 +189,10 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Email Toko',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    keyboardType: TextInputType.emailAddress, // Ini akan menunjukkan keyboard email
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'Contoh: namatoko@gmail.com',
-                    ),
+                  _buildTextFormField(
+                    label: 'Email',
+                    keyboardType: TextInputType.emailAddress,
                     onSaved: (value) {
-                      // Jika pengguna tidak memasukkan domain, secara otomatis menambahkannya
                       if (value != null && !value.contains('@gmail.com')) {
                         _email = '$value@gmail.com';
                       } else {
@@ -224,20 +206,20 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _registerStore,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF319F43),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Daftar Toko'),
-                    ),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    label: 'Deskripsi Toko', // Deskripsi toko dipindahkan ke bagian paling bawah
+                    maxLines: 3,
+                    onSaved: (value) => _storeDescription = value,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Deskripsi Toko tidak boleh kosong';
+                      }
+                      return null;
+                    },
                   ),
+                  const SizedBox(height: 32),
+                  _buildShadedButton(),
                 ],
               ),
             ),
@@ -247,12 +229,128 @@ class _DaftarTokoPageState extends State<DaftarTokoPage> {
               color: Colors.black54,
               child: const Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF319F43)), // Warna hijau #319F43
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF62E703)),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+AppBar _buildAppBar() {
+  return AppBar(
+    title: const Text(
+      'Daftar Toko',
+      style: TextStyle(color: Colors.black), // Warna teks hitam
+    ),
+    centerTitle: true,
+    backgroundColor: Colors.white,
+    elevation: 4, // Sesuaikan dengan kebutuhan
+    shadowColor: Colors.grey.withOpacity(0.5), // Warna shadow agar terlihat floating
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        bottom: Radius.circular(15), // Memberikan lengkungan di bagian bawah AppBar
+      ),
+    ),
+  );
+}
+
+
+  Widget _buildShadedButton() {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 5,
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _registerStore,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF62E703),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: _isLoading
+              ? const CircularProgressIndicator(color: Colors.white)
+              : const Text('Daftar Toko', style: TextStyle(fontSize: 16)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required String label,
+    required FormFieldSetter<String> onSaved,
+    required FormFieldValidator<String> validator,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.teal,
+            shadows: [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.grey,
+                offset: Offset(1.0, 1.0),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            keyboardType: keyboardType,
+            inputFormatters: inputFormatters,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.teal, width: 1),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              fillColor: Colors.grey[200],
+              filled: true,
+            ),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+            onSaved: onSaved,
+            validator: validator,
+          ),
+        ),
+      ],
     );
   }
 }

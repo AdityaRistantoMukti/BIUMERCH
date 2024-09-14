@@ -7,7 +7,6 @@ import 'ganti_password.dart';
 import 'ganti_email.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 class EditProfilePage extends StatefulWidget {
   final String username;
   final String email;
@@ -30,8 +29,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   File? _profileImage;
-  late String userId; // Ubah variabel userId menjadi dinamis
-  bool _isLoading = false; // Tambahkan variabel untuk loading
+  late String userId;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -39,8 +38,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _usernameController = TextEditingController(text: widget.username);
     _emailController = TextEditingController(text: widget.email);
     _phoneController = TextEditingController(text: widget.phone);
-
-    // Ambil user ID dari pengguna yang sedang login
     userId = FirebaseAuth.instance.currentUser!.uid;
   }
 
@@ -68,7 +65,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     setState(() {
-      _isLoading = true; // Tampilkan loading saat mulai menyimpan
+      _isLoading = true;
     });
 
     try {
@@ -98,14 +95,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
     } finally {
       setState(() {
-        _isLoading = false; // Sembunyikan loading setelah selesai
+        _isLoading = false;
       });
     }
   }
-
-  // Kode lainnya tidak berubah
-
-
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -144,46 +137,43 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       children: [
                         GestureDetector(
                           onTap: _pickImage,
-                          child: CircleAvatar(
-                            radius: 50,
-                            backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!)
-                                : (widget.profileImageUrl != null
-                                    ? NetworkImage(widget.profileImageUrl!)
-                                    : null) as ImageProvider<Object>?,
-                            child: _profileImage == null && widget.profileImageUrl == null
-                                ? const Icon(Icons.add_a_photo, size: 50, color: Colors.white)
-                                : null,
+                          child: Container(
+                            width: 110,
+                            height: 110,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.5), // Shading pada image
+                                  spreadRadius: 2,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 55,
+                              backgroundImage: _profileImage != null
+                                  ? FileImage(_profileImage!)
+                                  : (widget.profileImageUrl != null
+                                      ? NetworkImage(widget.profileImageUrl!)
+                                      : null) as ImageProvider<Object>?,
+                              child: _profileImage == null && widget.profileImageUrl == null
+                                  ? const Icon(Icons.add_a_photo, size: 50, color: Colors.white)
+                                  : null,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        TextField(
+                        _buildTextFormField(
+                          label: 'Username',
                           controller: _usernameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Username',
-                            labelStyle: TextStyle(color: Colors.green),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                          ),
                         ),
                         const SizedBox(height: 16),
-                        TextField(
+                        _buildTextFormField(
+                          label: 'Email',
                           controller: _emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            labelStyle: TextStyle(color: Colors.green),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                          ),
-                          readOnly: true,  // Membuat email tidak bisa diedit
+                          readOnly: true,
                           onTap: () {
                             Navigator.push(
                               context,
@@ -192,18 +182,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        TextField(
+                        _buildTextFormField(
+                          label: 'No telpon',
                           controller: _phoneController,
-                          decoration: const InputDecoration(
-                            labelText: 'No telpon',
-                            labelStyle: TextStyle(color: Colors.green),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                          ),
                         ),
                         const SizedBox(height: 16),
                         ListTile(
@@ -248,7 +229,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _saveProfile, // Nonaktifkan tombol jika sedang loading
+                        onPressed: _isLoading ? null : _saveProfile, 
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color.fromRGBO(86, 202, 3, 1),
                           shape: RoundedRectangleBorder(
@@ -268,12 +249,74 @@ class _EditProfilePageState extends State<EditProfilePage> {
               color: Colors.black54,
               child: const Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFF319F43), // Warna loading sesuai permintaan
+                  color: Color(0xFF319F43), 
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required String label,
+    required TextEditingController controller,
+    bool readOnly = false,
+    void Function()? onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.teal,
+            shadows: [
+              Shadow(
+                blurRadius: 2.0,
+                color: Colors.grey,
+                offset: Offset(1.0, 1.0),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            readOnly: readOnly,
+            onTap: onTap,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.teal, width: 1),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              fillColor: Colors.grey[200],
+              filled: true,
+            ),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 }

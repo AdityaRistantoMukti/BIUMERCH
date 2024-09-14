@@ -54,6 +54,7 @@ class _LandingPageState extends State<LandingPage> {
   String _username = ''; // Variabel untuk menyimpan username
   bool _isLoggedIn = false; // Status login
   int _totalBanners = 0;
+  User? currentUser;
 
   @override
   void initState() {
@@ -67,7 +68,7 @@ class _LandingPageState extends State<LandingPage> {
     });
 
     _checkLoginStatus(); // Cek apakah user sudah login
-
+    
     if (_isLoggedIn) {
       _productsFuture = fetchProducts();
       _recommendedProductsFuture = _getRecommendedProducts(); // Inisialisasi Future rekomendasi
@@ -76,7 +77,9 @@ class _LandingPageState extends State<LandingPage> {
       _productsFuture = fetchAllProducts(); // Ambil semua produk jika belum login
     }
     // 
-
+    // Inisialisasi pengguna saat ini
+    currentUser = FirebaseAuth.instance.currentUser;
+    
      // Inisialisasi FCM dan dapatkan token
       FirebaseMessaging.instance.getToken().then((token) {
         print("FCM Token: $token");
@@ -99,8 +102,6 @@ class _LandingPageState extends State<LandingPage> {
         );
       }
     });
-
-      
   }
 
    void saveTokenToDatabase(String? token) {
@@ -254,49 +255,85 @@ class _LandingPageState extends State<LandingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _isLoggedIn
-          ? AppBar(
-              automaticallyImplyLeading: false,
-              toolbarHeight: MediaQuery.of(context).size.height * 0.13,
-              elevation: 0,
-              title: Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Halo,',
-                      style: TextStyle(
-                        fontSize: 24.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      _username,
-                      style: const TextStyle(
-                        fontSize: 20.0,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromRGBO(76, 175, 80, 1),
-                      ),
-                    ),
-                  ],
+    ? AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight: MediaQuery.of(context).size.height * 0.13,
+        elevation: 0,
+        title: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Halo,',
+                style: TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => KeranjangPage()),
-                      );
-                    },
-                    icon: const Icon(Icons.shopping_cart_outlined, size: 40.0),
-                  ),
+              Text(
+                _username,
+                style: const TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(76, 175, 80, 1),
                 ),
-              ],
-            )
-          : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('rooms')
+                .where('buyerUID', isEqualTo: currentUser?.uid) // Menggunakan currentUser
+                .snapshots(),
+            builder: (context, roomSnapshot) {
+              if (!roomSnapshot.hasData || roomSnapshot.data!.docs.isEmpty) {
+                return _buildChatIcon(false);
+              }
+
+              List<Future<bool>> unreadMessagesFutures = roomSnapshot.data!.docs.map((roomDoc) async {
+                QuerySnapshot unreadMessages = await FirebaseFirestore.instance
+                    .collection('rooms')
+                    .doc(roomDoc.id)
+                    .collection('messages')
+                    .where('isRead', isEqualTo: false)
+                    .where('senderUID', isNotEqualTo: currentUser?.uid) // Menggunakan currentUser
+                    .get();
+
+                return unreadMessages.docs.isNotEmpty;
+              }).toList();
+
+              return FutureBuilder<List<bool>>(
+                future: Future.wait(unreadMessagesFutures),
+                builder: (context, unreadResults) {
+                  if (!unreadResults.hasData) {
+                    return _buildChatIcon(false); 
+                  }
+
+                  bool hasUnreadMessages = unreadResults.data!.contains(true);
+
+                  return _buildChatIcon(hasUnreadMessages);
+                },
+              );
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => KeranjangPage()),
+                );
+              },
+              icon: const Icon(Icons.shopping_cart_outlined, size: 40.0),
+            ),
+          ),
+        ],
+      )
+    : null,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,6 +600,46 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
+  Widget _buildChatIcon(bool hasUnreadMessages) {
+  return Padding(
+    padding: const EdgeInsets.only(right: 16.0),
+    child: Stack(
+      children: [
+        IconButton(
+          onPressed: () {
+            Navigator.pushNamed(context, '/listChatPembeli');
+          },
+          icon: const Icon(
+            Icons.chat_bubble_outline,
+            size: 30.0,
+            color: Color(0xFF194D42),
+          ),
+        ),
+        if (hasUnreadMessages)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4.0),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: const Text(
+                '!', // Bisa juga menampilkan jumlah pesan yang belum terbaca
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
   Widget _buildCategoryCard({
     required BuildContext context,
     required String svgPath,
@@ -636,7 +713,9 @@ class _LandingPageState extends State<LandingPage> {
       ),
     );
   }
+  
 }
+
 
 class CategoryCard extends StatelessWidget {
   final String svgPath;
@@ -711,3 +790,4 @@ class CategoryDetailPage extends StatelessWidget {
     );
   }
 }
+
