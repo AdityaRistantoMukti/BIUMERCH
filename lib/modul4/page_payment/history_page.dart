@@ -20,7 +20,13 @@ class HistoryPage extends StatelessWidget {
             onPressed: () {
               AuthenticationRepository.instance.logout();
             },
-            child: Text('Login untuk melihat pesanan Anda'),
+            style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text('Login untuk melihat pesanan Anda', style: TextStyle(fontSize: 16, color: Colors.green)),
           ),
         ),
       );

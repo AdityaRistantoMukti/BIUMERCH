@@ -296,17 +296,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           onTap: () {
                             Navigator.pushNamed(context, '/chatpage');
                           },
-                        ),
-                         ListTile(
-                          leading: const Icon(Icons.chat), // Menambahkan ikon chat
-                          title: const Text(
-                            'Chat',
-                            style: TextStyle(color: Color(0xFF194D42)),
-                          ),
-                          onTap: () {
-                            Navigator.pushNamed(context, '/listChatPembeli'); // Arahkan ke halaman listChatPembeli
-                          },
-                        ),
+                        ),                         
                         ListTile(
                           leading: const Icon(Icons.exit_to_app),
                           title: const Text(
@@ -329,12 +319,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     MaterialPageRoute(builder: (context) => WelcomePage()),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
                 child: const Text(
                   'Silahkan Login Terlebih Dahulu',
                   style: TextStyle(fontSize: 16, color: Colors.green),

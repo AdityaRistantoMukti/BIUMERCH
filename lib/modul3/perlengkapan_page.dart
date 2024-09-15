@@ -54,6 +54,7 @@ class _HalamanPerlengkapanState extends State<HalamanPerlengkapan> with WidgetsB
     final QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('products')
         .where('category', whereIn: ['Perlengkapan', 'Elektronik'])
+        .orderBy('name', descending: false) // Mengurutkan berdasarkan title dari A-Z
         .get();
 
     final List<Product> products = snapshot.docs.map((doc) {

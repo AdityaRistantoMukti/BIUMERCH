@@ -52,6 +52,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
       final snapshot = await FirebaseFirestore.instance
           .collection('products')
           .where('category', isEqualTo: 'Jasa') // Filter berdasarkan kategori
+          .orderBy('name', descending: false) // Mengurutkan berdasarkan title dari A-Z
           .get();
 
       final List<Product> products = snapshot.docs
@@ -196,7 +197,7 @@ class _HalamanJasaState extends State<HalamanJasa> {
                             ),
                           )
                         : GridView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Menambahkan padding
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Menambahkan padding                            
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
                               crossAxisSpacing: 5,

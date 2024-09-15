@@ -22,11 +22,15 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _emailError; // Variabel untuk menyimpan pesan error email
+  String? _passwordError; // Variabel untuk menyimpan pesan error password
   bool _isLoading = false; // Tambahkan variabel ini untuk mengontrol loading
-
+  bool _isPasswordVisible = false; // Menambah variabel untuk visibilitas password
   void _login() async {
     setState(() {
       _isLoading = true; // Set loading saat proses login dimulai
+      _emailError = null; // Reset error saat login dimulai
+      _passwordError = null; // Reset error saat login dimulai
     });
 
     String emailOrPhone = _emailOrPhoneController.text.trim();
@@ -34,29 +38,69 @@ class _LoginPageState extends State<LoginPage> {
 
     if (emailOrPhone.contains('@')) {
       try {
-        await _auth.signInWithEmailAndPassword(
+        // Mencoba login menggunakan email dan password
+        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
           email: emailOrPhone,
           password: password,
         );
 
-        // Save login status
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
+        User? user = userCredential.user;
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BottomNavigation(),
-          ),
-          (Route<dynamic> route) => false, 
-        );
+        // Mengecek apakah email sudah diverifikasi
+        if (user != null && user.emailVerified) {
+          // Email sudah diverifikasi, simpan status login dan navigasi ke halaman utama
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BottomNavigation(),
+            ),
+            (Route<dynamic> route) => false,
+          );
+        } else {
+          // Jika email belum diverifikasi, tampilkan pesan dan logout sementara
+          setState(() {
+            _emailError = 'Akun belum terverifikasi. Cek email Anda untuk verifikasi.';
+          });
+
+          // Mengirim ulang email verifikasi
+          if (user != null) {
+            await user.sendEmailVerification();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Email verifikasi telah dikirim ulang. Silakan cek kotak masuk Anda.'),
+              ),
+            );
+          }
+
+          // Logout pengguna sementara
+          await _auth.signOut();
+        }
       } on FirebaseAuthException catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: ${e.message}')),
-        );
+        // Handle Firebase errors dan terjemahkan ke bahasa Indonesia
+        setState(() {
+          switch (e.code) {
+            case 'user-not-found':
+              _emailError = 'Email tidak terdaftar.';
+              break;
+            case 'wrong-password':
+              _passwordError = 'Password salah.';
+              break;
+            case 'invalid-email':
+              _emailError = 'Format email salah.';
+              break;
+            default:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Login gagal: ${e.message}')),
+              );
+          }
+        });
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: ${e.toString()}')),
+          SnackBar(content: Text('Login gagal: ${e.toString()}')),
         );
       } finally {
         setState(() {
@@ -64,6 +108,7 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     } else {
+      // Jika input bukan email, gunakan login dengan nomor telepon
       _loginWithPhone(emailOrPhone, password);
     }
   }
@@ -82,16 +127,20 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.message}')),
+        SnackBar(content: Text('Login gagal: ${e.message}')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.toString()}')),
+        SnackBar(content: Text('Login gagal: ${e.toString()}')),
       );
     }
   }
-  
+
   Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true; // Mulai loading untuk satu loading state
+    });
+
     try {
       // Sign out from any previous Google account (ensures account selection on next sign-in)
       await _googleSignIn.signOut();
@@ -100,7 +149,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (googleUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Google Sign-In was cancelled')),
+          const SnackBar(content: Text('Google Sign-In dibatalkan')),
         );
         return;
       }
@@ -117,45 +166,7 @@ class _LoginPageState extends State<LoginPage> {
       final User? user = userCredential.user;
 
       if (user != null) {
-        // Cek apakah pengguna baru
-        final DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-          // Jika pengguna baru, simpan informasi mereka ke Firestore
-          await _firestore.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'username': user.displayName ?? 'Anonymous',
-            'createdAt': FieldValue.serverTimestamp(),
-            'balance': 0, // Set initial balance to 0
-            'idUser': user.uid, // Set idUser to the same as the document ID
-            'phone': '', // Set phoneNumber to empty string
-            'profilePicture': '', // Set profilePicture to empty string
-          });
-
-          // Daftar kategori yang akan dibuat dalam sub-koleksi 'categoryVisits'
-          List<String> categories = ['Makanan & Minuman', 'Jasa', 'Elektronik', 'Perlengkapan'];
-
-          await _firestore.collection('users').doc(user.uid)
-              .collection('categoryVisits')
-              .get()
-              .then((snapshot) async {
-            if (snapshot.docs.isEmpty) {
-              // Jika sub-koleksi 'categoryVisits' kosong, tambahkan dokumen dengan nama kategori
-              for (String category in categories) {
-                await _firestore.collection('users').doc(user.uid)
-                    .collection('categoryVisits').doc(category).set({
-                  'category': category,
-                  'visitCount': 0,
-                  'timestamp': FieldValue.serverTimestamp(),
-                });
-              }
-              print("Category visits collection created with initial categories for user ${user.uid}");
-            } else {
-              print("Category visits collection already exists for user ${user.uid}");
-            }
-          });
-        }
-
-        // Save login status
+        // Simpan status login
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
 
@@ -165,17 +176,21 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(
             builder: (context) => BottomNavigation(),
           ),
-          (Route<dynamic> route) => false, 
+          (Route<dynamic> route) => false,
         );
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed: ${e.message}')),
+        SnackBar(content: Text('Google Sign-In gagal: ${e.message}')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In failed: ${e.toString()}')),
+        SnackBar(content: Text('Google Sign-In gagal: ${e.toString()}')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false; // Hentikan loading
+      });
     }
   }
 
@@ -195,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
         fit: StackFit.expand,
         children: <Widget>[
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/BGLogin.png'),
                 fit: BoxFit.cover,
@@ -209,9 +224,9 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    const SizedBox(height: 323.0), // Vertical spacing
-                    const Text(
-                      'Hai, Selamat \nDatang Kembali!',
+                    SizedBox(height: 323.0), // Vertical spacing
+                    Text(
+                      'Hai, Sob!\nBalik lagi nih! \nYuk, lanjut belanja!',
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 25.0,
@@ -221,116 +236,149 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20.0), // Vertical spacing
-                    const Text(
+                    SizedBox(height: 20.0), // Vertical spacing
+                    Text(
                       'Masuk ke akunmu yuk!',
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 14.0,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF5F5F5F),
+                        fontWeight: FontWeight.w400,
+                        height: 19.07 / 14, // Line-height / font-size
+                        color: Colors.black,
                       ),
                     ),
-                    const SizedBox(height: 20.0), // Vertical spacing
+                    SizedBox(height: 48.0), // Vertical spacing
                     TextField(
                       controller: _emailOrPhoneController,
                       decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFFF3F3F3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        labelText: 'Masukkan email atau nomor telepon',
-                        labelStyle: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.w700,
+                        labelText: 'Masukan email/No Telepon',
+                        labelStyle: TextStyle(
                           color: Color(0xFF0B4D3B),
+                        ),
+                        filled: true,
+                        fillColor: Color(0xFFF3F3F3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14.0),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10.0),
+                    SizedBox(height: 16.0), // Vertical spacing
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
+                      obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFFF3F3F3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        labelText: 'Masukkan password',
-                        labelStyle: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.w700,
+                        labelText: 'Masukan password',
+                        labelStyle: TextStyle(
                           color: Color(0xFF0B4D3B),
+                        ),
+                        filled: true,
+                        fillColor: Color(0xFFF3F3F3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14.0),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible =
+                                  !_isPasswordVisible; // Ubah visibilitas password
+                            });
+                          },
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10.0),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _navigateToForgotPassword,
-                        child: const Text(
+                        child: Text(
                           'Lupa password?',
                           style: TextStyle(
-                            fontSize: 14.0,
                             color: Color(0xFF319F43),
+                            fontFamily: 'Nunito',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.0,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    SizedBox(height: 16.0), // Vertical spacing
                     SizedBox(
                       width: double.infinity,
+                      height: 52.0,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login, // Disable button while loading
+                        onPressed: _isLoading
+                            ? null
+                            : _login, // Disable the button when loading
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isLoading ? Colors.grey : const Color(0xFF62E703), // Ubah warna tombol saat loading
-                          padding: const EdgeInsets.symmetric(vertical: 15.0),
+                          backgroundColor: Color(0xFF62E703),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14.0),
                           ),
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ? CircularProgressIndicator(
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                               )
-                            : const Text('Masuk'),
+                            : Text(
+                                'Masuk',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'Nunito',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 28.0,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    SizedBox(height: 16.0), // Vertical spacing
+                    Text(
+                      'atau',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontFamily: 'Nunito',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.0,
+                      ),
+                    ),
+                    SizedBox(height: 16.0), // Vertical spacing
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _signInWithGoogle, // Disable button while loading
+                      height: 52.0,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading
+                            ? null
+                            : _signInWithGoogle, // Disable the button when loading
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isLoading ? Colors.grey : const Color(0xFF62E703), // Ubah warna tombol saat loading
-                          padding: const EdgeInsets.symmetric(vertical: 15.0),
+                          backgroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14.0),
+                            side: BorderSide(color: Colors.black),
                           ),
                         ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              )
-                            : const Text('Masuk dengan Google'),
+                        icon: Image.asset(
+                          'assets/google_logo2.png',
+                          height: 24.0,
+                        ),
+                        label: _isLoading
+                            ? CircularProgressIndicator()
+                            : Text(
+                                'Masuk dengan Google',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontFamily: 'Nunito',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.0,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(height: 20.0),
+                    SizedBox(height: 120.0), // Vertical spacing
                   ],
                 ),
               ),

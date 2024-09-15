@@ -115,9 +115,11 @@ flutter:
     - assets/BGDaftar.png
     - assets/welcome.png
     - assets/google_logo.png
+    - assets/google_logo2.png
     - assets/verifikasilogo.png
     - assets/verfikasisukseslogo.png
     - assets/lupa_pw.png
+    - assets/email.png
   # ------------- LOCAL FONTS ------------- #
   fonts:
     - family: Nunito

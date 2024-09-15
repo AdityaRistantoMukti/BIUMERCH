@@ -61,7 +61,8 @@ class _HalamanMakananMinumanState extends State<HalamanMakananMinuman> {
       // Ambil produk dari Firebase yang hanya memiliki kategori "Makanan & Minuman"
       final snapshot = await FirebaseFirestore.instance
           .collection('products')
-          .where('category', isEqualTo: 'Makanan & Minuman')
+          .where('category', isEqualTo: 'Makanan & Minuman')          
+          .orderBy('name', descending: false) // Urutkan berdasarkan title A-Z
           .get();
 
       final List<Product> products = snapshot.docs.map((doc) {

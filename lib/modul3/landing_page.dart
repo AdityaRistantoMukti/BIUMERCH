@@ -50,6 +50,7 @@ class _LandingPageState extends State<LandingPage> {
   late Future<List<BannerModel>> _bannersFuture;
   late Future<List<Product>> _productsFuture;
   late Future<List<Product>> _recommendedProductsFuture; // Tambahkan ini untuk rekomendasi
+  late Future<List<Product>> _topProducts; // Tambahkan ini untuk rekomendasi
   final String _searchQuery = '';
   String _username = ''; // Variabel untuk menyimpan username
   bool _isLoggedIn = false; // Status login
@@ -66,16 +67,18 @@ class _LandingPageState extends State<LandingPage> {
       });
       return banners;
     });
-
+    requestNotificationPermissions();
     _checkLoginStatus(); // Cek apakah user sudah login
     
+    // Ambil produk tanpa perlu memeriksa login terlebih dahulu
+    _productsFuture = fetchAllProducts();
+    _topProducts = fetchTopProducts();
+
     if (_isLoggedIn) {
-      _productsFuture = fetchProducts();
       _recommendedProductsFuture = _getRecommendedProducts(); // Inisialisasi Future rekomendasi
       _loadUsername(); // Panggil fungsi untuk load username
-    } else {
-      _productsFuture = fetchAllProducts(); // Ambil semua produk jika belum login
     }
+    
     // 
     // Inisialisasi pengguna saat ini
     currentUser = FirebaseAuth.instance.currentUser;
@@ -112,12 +115,47 @@ class _LandingPageState extends State<LandingPage> {
       });
     }
   }
+
+  void requestNotificationPermissions() async {
+    NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      print('User granted permission');
+    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      print('User granted provisional permission');
+    } else {
+      print('User declined or has not accepted permission');
+    }
+  }
+  // End
+
   Future<void> _checkLoginStatus() async {
-    User? user = FirebaseAuth.instance.currentUser;
+  User? user = FirebaseAuth.instance.currentUser;
+
+  if (mounted) {
     setState(() {
       _isLoggedIn = user != null; // True jika user sudah login
     });
+
+    if (user != null) {
+      // Jika pengguna login, panggil fungsi lain seperti load username dan rekomendasi
+      _loadUsername(); // Mengambil username
+      _recommendedProductsFuture = _getRecommendedProducts(); // Ambil produk rekomendasi
+    } else {
+      // Jika pengguna tidak login, ambil semua produk
+      _productsFuture = fetchAllProducts();
+    }
   }
+}
+
 
  Future<void> _loadUsername() async {
     final userProfile = await fetchUserProfile();
@@ -128,25 +166,29 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   Future<List<Product>> fetchAllProducts() async {
-    try {
-      final List<Product> products = await FirebaseFirestore.instance
-          .collection('products')
-          .get()
-          .then((snapshot) {
-        return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
-      });
-      return products;
-    } catch (e) {
-      print('Error fetching all products: $e');
-      return [];
-    }
+  try {
+    final List<Product> products = await FirebaseFirestore.instance
+        .collection('products')
+        .orderBy('name', descending: false) // Mengurutkan berdasarkan title dari A-Z
+        .get()
+        .then((snapshot) {
+      return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
+    });
+    return products;
+  } catch (e) {
+    print('Error fetching all products: $e');
+    return [];
   }
+}
 
-  Future<List<Product>> fetchProducts() async {
+
+  Future<List<Product>> fetchTopProducts() async {
     try {
       final List<Product> products = await FirebaseFirestore.instance
           .collection('products')
-          .where('rating', isEqualTo: '4.5')
+          .where('rating', isGreaterThanOrEqualTo: '4.5')
+          .where('rating', isLessThanOrEqualTo: '5')
+          .orderBy('rating', descending: true)
           .get()
           .then((snapshot) {
         return snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList();
@@ -181,7 +223,8 @@ class _LandingPageState extends State<LandingPage> {
         QuerySnapshot productsSnapshot = await FirebaseFirestore.instance
             .collection('products')
             .where('category', isEqualTo: topCategory)
-            .limit(10) // Batasi jumlah produk yang diambil
+            .orderBy('rating', descending: true)
+            .limit(5) // Batasi jumlah produk yang diambil
             .get();
 
         return productsSnapshot.docs
@@ -190,7 +233,7 @@ class _LandingPageState extends State<LandingPage> {
       }
     }    
     // Jika tidak ada kategori dengan visitCount > 0 atau tidak ada kategori ditemukan
-    return fetchAllProducts();
+    return fetchTopProducts();
   } else {
     // Jika user tidak login, ambil semua produk
     return fetchAllProducts();
@@ -250,6 +293,7 @@ class _LandingPageState extends State<LandingPage> {
       }
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +602,7 @@ class _LandingPageState extends State<LandingPage> {
                   ),
                   const SizedBox(height: 10.0),
                   FutureBuilder<List<Product>>(
-                    future: _isLoggedIn ? _recommendedProductsFuture : _productsFuture, // Pilih Future berdasarkan status login
+                    future: _isLoggedIn ? _recommendedProductsFuture : _topProducts, // Pilih Future berdasarkan status login
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator(
@@ -570,9 +614,11 @@ class _LandingPageState extends State<LandingPage> {
                         return const Center(child: Text('No products available'));
                       } else {
                         List<Product> products = snapshot.data!;
-                        List<Product> filteredProducts = products.where((product) {
-                          return product.title.toLowerCase().contains(_searchQuery.toLowerCase());
-                        }).toList();
+                        
+                        List<Product> filteredProducts = products.take(5).toList();
+                        // List<Product> filteredProducts = products.where((product) {
+                        //   return product.title.toLowerCase().contains(_searchQuery.toLowerCase());
+                        // }).take(5).toList();  
 
                         return SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -594,6 +640,63 @@ class _LandingPageState extends State<LandingPage> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text(
+                    'Produk Lainnya',
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10.0),
+                  FutureBuilder<List<Product>>(
+                    future: _productsFuture, // Ambil semua produk
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green), // Warna loader hijau
+                        ));
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(child: Text('No products available'));
+                      } else {
+                        List<Product> products = snapshot.data!;
+
+                        final double screenWidth = MediaQuery.of(context).size.width;
+                        final double screenHeight = MediaQuery.of(context).size.height;
+
+                        // Hitung childAspectRatio berdasarkan lebar layar dan tinggi yang diinginkan
+                        final double childAspectRatio = (screenWidth / 1) / (screenHeight / 3.1); // Adjust this formula
+
+                        return GridView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0), // Menambahkan padding
+                            shrinkWrap: true, // Agar GridView tidak mengambil seluruh tinggi layar
+                            physics: const NeverScrollableScrollPhysics(), // Menghindari konflik scroll dengan SingleChildScrollView
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 5,
+                              mainAxisSpacing: 5,
+                              childAspectRatio: MediaQuery.of(context).size.width /
+                                  (MediaQuery.of(context).size.height * 0.80),
+                            ),
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final product = products[index];
+                            return ProductCard(product: product); // Gunakan widget ProductCard yang sama
+                          },
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+
           ],
         ),
       ),

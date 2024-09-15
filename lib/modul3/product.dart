@@ -42,6 +42,7 @@ class Product {
       category: data['category'] ?? '',  // Set category dari data Firestore
       storeId: data['storeId'] ?? '', // Ambil Store ID dari Firestore
       id: doc.id,  // Set id dari Firestore document id
+      
     );
   }
 
@@ -119,6 +120,7 @@ class ProductCard extends StatelessWidget {
       });
     }
   }
+  
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
