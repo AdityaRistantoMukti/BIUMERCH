@@ -5,121 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google reCAPTCHA</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body, html {
-            height: 100%;
-            font-family: 'Nunito', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-image: url('assets/welcome.png');
-            background-size: cover;
-            background-position: center;
-        }
-
-        .container {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-
-        p {
-            font-size: 1.2rem;
-            color: #34495e;
-            margin-bottom: 30px;
-        }
-
-        .btn {
-            background-color: #62E703;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn:hover {
-            background-color: #4CAF50;
-        }
-
-        .btn:active {
-            background-color: #45a049;
-        }
-
-        /* Modal styling */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 300px;
-        }
-
-        .modal-content h2 {
-            color: #333;
-        }
-
-        .modal-content button {
-            background-color: #62E703;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            margin-top: 20px;
-            border-radius: 5px;
-        }
-
-        .modal-content button:hover {
-            background-color: #4CAF50;
-        }
-
-        /* Responsive design */
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 2rem;
-            }
-
-            p {
-                font-size: 1rem;
-            }
-
-            .btn {
-                font-size: 1rem;
-                padding: 10px 20px;
-            }
-        }
+        /* Styling yang sudah Anda buat */
     </style>
 
     <!-- Google reCAPTCHA -->
@@ -144,7 +30,7 @@
     <div id="customAlert" class="modal">
         <div class="modal-content">
             <h2 id="modalMessage"></h2>
-            <button onclick="closeModal()">OK</button>
+            <button id="okButton" onclick="closeModal()">OK</button>
         </div>
     </div>
 
@@ -163,20 +49,21 @@
         function showModal(message, status) {
             var modal = document.getElementById('customAlert');
             var modalMessage = document.getElementById('modalMessage');
+            var okButton = document.getElementById('okButton');
 
             modalMessage.innerHTML = message;  // Set the message in the modal
             modal.style.display = "flex";  // Tampilkan modal
 
-            // Simpan status ke URL, akan digunakan oleh aplikasi mobile untuk redirect
-            document.getElementById('customAlert').dataset.status = status;
+            // Set action on OK button to close modal and send status to Flutter
+            okButton.setAttribute('data-status', status);  // Simpan status ke tombol OK
         }
 
        function closeModal() {
             var modal = document.getElementById('customAlert');
-            var status = modal.dataset.status;
-        
+            var status = document.getElementById('okButton').getAttribute('data-status');
+
             modal.style.display = "none";  // Sembunyikan modal
-        
+
             // Redirect berdasarkan status captcha
             if (status === "success") {
                 window.location.href = "myapp://success";  // Redirect to deep link for success
@@ -184,7 +71,6 @@
                 window.location.href = "myapp://failed";   // Redirect to deep link for failed
             }
         }
-
     </script>
 
 </body>
