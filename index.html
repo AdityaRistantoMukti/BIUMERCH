@@ -172,26 +172,26 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Show loader when DOM is loaded
-            document.getElementById('loader').style.display = 'block';
-        });
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     // Show loader when DOM is loaded
+        //     document.getElementById('loader').style.display = 'block';
+        // });
 
-        // Event listener for CAPTCHA API ready
-        grecaptcha.ready(function() {
-            grecaptcha.render('recaptcha', {
-                'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
-                'callback': function() {
-                    // Hide loader once reCAPTCHA is rendered
-                    document.getElementById('loader').style.display = 'none';
-                }
-            });
+        // // Event listener for CAPTCHA API ready
+        // grecaptcha.ready(function() {
+        //     grecaptcha.render('recaptcha', {
+        //         'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
+        //         'callback': function() {
+        //             // Hide loader once reCAPTCHA is rendered
+        //             document.getElementById('loader').style.display = 'none';
+        //         }
+        //     });
 
-            // Set a timeout to hide loader after 10 seconds even if CAPTCHA is not rendered
-            setTimeout(function() {
-                document.getElementById('loader').style.display = 'none';
-            }, 10000);  // Timeout after 10 seconds
-        });
+        //     // Set a timeout to hide loader after 10 seconds even if CAPTCHA is not rendered
+        //     setTimeout(function() {
+        //         document.getElementById('loader').style.display = 'none';
+        //     }, 10000);  // Timeout after 10 seconds
+        // });
 
         function submitCaptcha() {
             var response = grecaptcha.getResponse();
