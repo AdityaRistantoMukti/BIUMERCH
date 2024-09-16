@@ -204,6 +204,7 @@ class ProductCard extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  
                   const SizedBox(height: 4.0), // Reduce space between text and rating
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),

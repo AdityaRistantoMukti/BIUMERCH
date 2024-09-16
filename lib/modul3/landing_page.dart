@@ -5,6 +5,7 @@ import 'package:biumerch_mobile_app/utils/user_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -54,6 +55,7 @@ class _LandingPageState extends State<LandingPage> {
   final String _searchQuery = '';
   String _username = ''; // Variabel untuk menyimpan username
   bool _isLoggedIn = false; // Status login
+  bool _isCaptchaVerified = false;  // Tambahkan status verifikasi captcha
   int _totalBanners = 0;
   User? currentUser;
 
@@ -138,23 +140,29 @@ class _LandingPageState extends State<LandingPage> {
   // End
 
   Future<void> _checkLoginStatus() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  
+  // Ambil status login dan status verifikasi CAPTCHA dari SharedPreferences
+  bool isCaptchaVerified = prefs.getBool('isCaptchaVerified') ?? false;
   User? user = FirebaseAuth.instance.currentUser;
 
   if (mounted) {
     setState(() {
-      _isLoggedIn = user != null; // True jika user sudah login
+      // User dianggap login hanya jika sudah login ke Firebase dan verifikasi CAPTCHA berhasil
+      _isLoggedIn = user != null && isCaptchaVerified; 
     });
 
-    if (user != null) {
-      // Jika pengguna login, panggil fungsi lain seperti load username dan rekomendasi
+    if (_isLoggedIn) {
+      // Jika pengguna sudah login dan CAPTCHA diverifikasi, load username dan rekomendasi produk
       _loadUsername(); // Mengambil username
       _recommendedProductsFuture = _getRecommendedProducts(); // Ambil produk rekomendasi
     } else {
-      // Jika pengguna tidak login, ambil semua produk
+      // Jika pengguna tidak login atau CAPTCHA belum diverifikasi, ambil semua produk
       _productsFuture = fetchAllProducts();
     }
   }
 }
+
 
 
  Future<void> _loadUsername() async {
@@ -377,7 +385,7 @@ class _LandingPageState extends State<LandingPage> {
           ),
         ],
       )
-    : null,
+    : null ,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -682,7 +690,7 @@ class _LandingPageState extends State<LandingPage> {
                               crossAxisSpacing: 5,
                               mainAxisSpacing: 5,
                               childAspectRatio: MediaQuery.of(context).size.width /
-                                  (MediaQuery.of(context).size.height * 0.80),
+                                  (MediaQuery.of(context).size.height * 0.87),
                             ),
                           itemCount: products.length,
                           itemBuilder: (context, index) {

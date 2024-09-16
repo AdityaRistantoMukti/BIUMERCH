@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:flutter/material.dart';
 import 'daftar_toko.dart'; // Import halaman DaftarTokoPage
 
@@ -16,7 +17,12 @@ class TokoBaruPage extends StatelessWidget {
             color: Colors.black, // Warna hitam untuk icon back
           ),
           onPressed: () {
-            Navigator.pop(context); // Navigasi kembali
+             Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BottomNavigation(selectedIndex: 3), 
+              ),
+            );
           },
         ),
       ),

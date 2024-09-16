@@ -40,6 +40,8 @@ class _FoodDetailPageState extends State<FoodDetailPage>
   String? storeOwnerId; // Store owner's UID
   String? storeName; // Add storeName to hold the name fetched  
   User? currentUser;
+  bool _isReadMore = false;
+  
   List<String> imageUrls = [];
   final PageController _pageController = PageController();
 
@@ -502,7 +504,7 @@ Future<void> _sendProductCardAndMessage(String roomId) async {
       );
     }
   }
-// Tutuo
+// Tutup
 // Fungsi Mengirim data produk ke halaman checkout
 Future<void> _proceedToCheckout(BuildContext context) async {
 
@@ -598,7 +600,15 @@ Future<void> _proceedToCheckout(BuildContext context) async {
   }
 }
 // Tutup
-
+ // Function untuk memotong teks deskripsi
+  String _getShortDescription(String description) {
+    if (description.length > 100 && !_isReadMore) {
+      return description.substring(0, 100) + '...';
+    } else {
+      return description;
+    }
+  }
+//Tutup
 
 // Code inti
   @override
@@ -745,7 +755,7 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
-                                  Text(
+                                    Text(
                                     'Deskripsi:',
                                     style: TextStyle(
                                       fontSize: screenWidth * 0.045,
@@ -754,11 +764,47 @@ Future<void> _proceedToCheckout(BuildContext context) async {
                                   ),
                                   SizedBox(height: screenWidth * 0.02),
                                   Text(
-                                    widget.description,
+                                    _getShortDescription(widget.description),
                                     style: TextStyle(
                                       fontSize: screenWidth * 0.04,
                                     ),
                                   ),
+                                  if (widget.description.length > 100)
+                                    Column(
+                                      children: [
+                                        const Divider(), // Divider di atas
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _isReadMore = !_isReadMore;
+                                            });
+                                          },
+                                          child: Center(
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  _isReadMore
+                                                      ? 'Baca lebih sedikit'
+                                                      : 'Baca selengkapnya',
+                                                  style: TextStyle(
+                                                    fontSize: screenWidth * 0.04,
+                                                    color: Colors.blue,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  _isReadMore
+                                                      ? Icons.keyboard_arrow_up
+                                                      : Icons.keyboard_arrow_down,
+                                                  color: Colors.blue,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                             ),
@@ -814,10 +860,11 @@ Future<void> _proceedToCheckout(BuildContext context) async {
 
                                           final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
                                           final username = userData?['username'] ?? 'Anonim';
-
                                           return ReviewCard(
                                             username: username,
-                                            timeAgo: reviewData['timeAgo'] ?? 'Baru saja',
+                                            timeAgo: reviewData['timestamp'] != null 
+                                                ? DateFormat('dd MMM yyyy').format(DateTime.parse(reviewData['timestamp']))
+                                                : 'Baru saja',
                                             rating: reviewData['rating']?.toDouble() ?? 0.0,
                                             comment: reviewData['review'] ?? '',
                                           );

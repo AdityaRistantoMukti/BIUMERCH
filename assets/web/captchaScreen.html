@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google reCAPTCHA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: 'Nunito', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: url('assets/welcome.png');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.9); /* Transparan putih */
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #34495e;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background-color: #62E703;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #4CAF50;
+        }
+
+        .btn:active {
+            background-color: #45a049;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            p {
+                font-size: 1rem;
+            }
+
+            .btn {
+                font-size: 1rem;
+                padding: 10px 20px;
+            }
+        }
+    </style>
+
+    <!-- Tambahkan Google reCAPTCHA API -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Verifikasi Captcha</h1>
+        <p>Silakan verifikasi captcha untuk melanjutkan.</p>
+        <!-- reCAPTCHA widget -->
+        <div class="g-recaptcha" data-sitekey="6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p"></div>
+
+        <br>
+
+        <!-- Tombol Submit -->
+        <button class="btn" id="submitBtn" onclick="submitCaptcha()">Submit</button>
+    </div>
+
+    <script>
+        function submitCaptcha() {
+            var response = grecaptcha.getResponse();
+            if (response.length === 0) {
+                alert("Please complete the captcha.");
+            } else {
+                alert("Captcha berhasil diverifikasi.");
+                // Di sini Anda bisa melanjutkan logika tanpa backend
+                // Atau Anda bisa memanggil backend jika diperlukan
+            }
+        }
+    </script>
+    
+</body>
+</html>

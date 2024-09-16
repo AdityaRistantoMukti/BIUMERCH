@@ -20,7 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _phone = '';
   String? _profileImageUrl;
   bool _isLoggedIn = false;
-
+  bool _isCaptchaVerified = false;  // Tambahkan status verifikasi captcha
   @override
   void initState() {
     super.initState();
@@ -29,9 +29,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _checkLoginStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isCaptchaVerified = prefs.getBool('isCaptchaVerified') ?? false;
     User? user = FirebaseAuth.instance.currentUser;
     setState(() {
-      _isLoggedIn = user != null;
+      _isLoggedIn = user != null && isCaptchaVerified;
     });
   }
 

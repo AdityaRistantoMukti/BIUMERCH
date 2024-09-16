@@ -1,7 +1,9 @@
+import 'package:biumerch_mobile_app/modul1/WelcomePage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'payment_page_history.dart';
 import '/modul1.2/data/repositories/authentication/authentication_repository.dart';
@@ -9,99 +11,128 @@ import 'package:rxdart/rxdart.dart';
 import 'ulasan.dart'; // Import the review page
 
 class HistoryPage extends StatelessWidget {
+
+  // Fungsi untuk memeriksa apakah captcha sudah diverifikasi
+  Future<bool> _isCaptchaVerified() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('isCaptchaVerified') ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    User? user = FirebaseAuth.instance.currentUser;
+    return FutureBuilder<bool>(
+      future: _isCaptchaVerified(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    if (user == null) {
-      return Scaffold(
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () {
-              AuthenticationRepository.instance.logout();
-            },
-            style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+        bool isCaptchaVerified = snapshot.data ?? false;
+        User? user = FirebaseAuth.instance.currentUser;
+
+        // Jika user belum login atau belum verifikasi captcha, tampilkan tombol untuk login
+        if (user == null || !isCaptchaVerified) {
+          return Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => WelcomePage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Login untuk melihat pesanan Anda',
+                  style: TextStyle(fontSize: 16, color: Colors.green),
+                ),
               ),
             ),
-            child: Text('Login untuk melihat pesanan Anda', style: TextStyle(fontSize: 16, color: Colors.green)),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "Pesanan Saya",
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.black,
-          ),
-        ),
-      ),
-      body: StreamBuilder<List<QuerySnapshot>>(
-        stream: _getCombinedStream(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text("Error loading orders"));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No orders found"));
-          }
-
-          List<DocumentSnapshot> orders = [];
-          for (var querySnapshot in snapshot.data!) {
-            orders.addAll(querySnapshot.docs);
-          }
-
-          orders.sort((a, b) {
-            Timestamp? timestampA = a['timestamp'] as Timestamp?;
-            Timestamp? timestampB = b['timestamp'] as Timestamp?;
-            if (timestampA != null && timestampB != null) {
-              return timestampB.compareTo(timestampA);
-            }
-            return 0; // If either timestamp is null, consider them equal
-          });
-
-          for (var doc in orders) {
-            _checkAndCancelExpiredTransaction(doc);
-          }
-
-          return ListView.builder(
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              var order = orders[index];
-              String status = order['status'];
-              String transactionId = order.id;
-              bool isTemp = order.reference.parent.id == 'transaksiTemp';
-
-              final data = order.data() as Map<String, dynamic>?;
-
-              if (data != null && data.containsKey('stores')) {
-                return _buildNewOrderFormat(
-                    context, order, status, transactionId, isTemp);
-              } else {
-                return _buildOldOrderFormat(
-                    context, order, status, transactionId, isTemp);
-              }
-            },
           );
-        },
-      ),
+        }
+
+        // Jika user sudah login dan captcha sudah terverifikasi, tampilkan riwayat pesanan
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            title: const Text(
+              "Pesanan Saya",
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          body: StreamBuilder<List<QuerySnapshot>>(
+            stream: _getCombinedStream(user!.uid), // Pengguna sudah login di sini
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return const Center(child: Text("Error loading orders"));
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text("No orders found"));
+              }
+
+              List<DocumentSnapshot> orders = [];
+              for (var querySnapshot in snapshot.data!) {
+                orders.addAll(querySnapshot.docs);
+              }
+
+              // Mengurutkan berdasarkan waktu
+              orders.sort((a, b) {
+                Timestamp? timestampA = a['timestamp'] as Timestamp?;
+                Timestamp? timestampB = b['timestamp'] as Timestamp?;
+                if (timestampA != null && timestampB != null) {
+                  return timestampB.compareTo(timestampA);
+                }
+                return 0;
+              });
+
+              // Mengecek apakah ada transaksi yang expired
+              for (var doc in orders) {
+                _checkAndCancelExpiredTransaction(doc);
+              }
+
+              // Menampilkan pesanan dalam format baru atau lama
+              return ListView.builder(
+                itemCount: orders.length,
+                itemBuilder: (context, index) {
+                  var order = orders[index];
+                  String status = order['status'];
+                  String transactionId = order.id;
+                  bool isTemp = order.reference.parent.id == 'transaksiTemp';
+
+                  final data = order.data() as Map<String, dynamic>?;
+
+                  if (data != null && data.containsKey('stores')) {
+                    return _buildNewOrderFormat(
+                        context, order, status, transactionId, isTemp);
+                  } else {
+                    return _buildOldOrderFormat(
+                        context, order, status, transactionId, isTemp);
+                  }
+                },
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
+  // Menggabungkan stream dari transaksi dan transaksi sementara
   Stream<List<QuerySnapshot>> _getCombinedStream(String userId) {
     final transaksiStream = FirebaseFirestore.instance
         .collection('users')
@@ -120,6 +151,7 @@ class HistoryPage extends StatelessWidget {
     return CombineLatestStream.list([transaksiStream, transaksiTempStream]);
   }
 
+  // Fungsi untuk mengecek dan membatalkan transaksi yang expired
   Future<void> _checkAndCancelExpiredTransaction(DocumentSnapshot order) async {
     String status = order['status'];
     DateTime? expiryTime = order['expiryTime']?.toDate();
@@ -131,6 +163,7 @@ class HistoryPage extends StatelessWidget {
     }
   }
 
+  // Fungsi untuk memperbarui status transaksi dan memindahkan transaksi dari sementara ke permanen
   Future<void> _updateStatus(DocumentSnapshot order, String newStatus, bool isTemp) async {
     User? user = FirebaseAuth.instance.currentUser;
 
@@ -139,6 +172,7 @@ class HistoryPage extends StatelessWidget {
       final collection = isTemp ? 'transaksiTemp' : 'transaksi';
 
       try {
+        // Update status transaksi (temp atau permanen) dengan status baru
         await firestore
             .collection('users')
             .doc(user.uid)
@@ -146,6 +180,7 @@ class HistoryPage extends StatelessWidget {
             .doc(order.id)
             .update({'status': newStatus});
 
+        // Jika transaksi berasal dari transaksiTemp dan perlu dipindahkan ke transaksi permanen
         if (isTemp) {
           var tempData = await firestore
               .collection('users')
@@ -154,6 +189,7 @@ class HistoryPage extends StatelessWidget {
               .doc(order.id)
               .get();
 
+          // Jika data ditemukan di transaksiTemp, pindahkan ke transaksi permanen
           if (tempData.exists) {
             await firestore
                 .collection('users')
@@ -162,6 +198,7 @@ class HistoryPage extends StatelessWidget {
                 .doc(order.id)
                 .set(tempData.data()!);
 
+            // Hapus transaksi dari transaksiTemp setelah dipindahkan ke transaksi permanen
             await firestore
                 .collection('users')
                 .doc(user.uid)
@@ -178,6 +215,7 @@ class HistoryPage extends StatelessWidget {
     }
   }
 
+  // Menampilkan pesanan lama
   Widget _buildOldOrderFormat(BuildContext context, DocumentSnapshot order, String status, String transactionId, bool isTemp) {
     String productName = order['productName'] ?? 'Unknown Product';
     int productPrice = order['productPrice'] ?? 0;
@@ -197,7 +235,6 @@ class HistoryPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order details display code
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -406,6 +443,7 @@ class HistoryPage extends StatelessWidget {
     );
   }
 
+  // Menampilkan dialog konfirmasi pesanan
   Future<void> _showConfirmationDialog(BuildContext context, DocumentSnapshot order) async {
     final data = order.data() as Map<String, dynamic>?;
 
@@ -464,7 +502,7 @@ class HistoryPage extends StatelessWidget {
                       .doc(order.id)
                       .update({
                         'status': 'completed',
-                        'review': false // Add the review field and set it to false initially
+                        'review': false // Tambahkan review: false
                       });
 
                   Navigator.of(context).pop();
@@ -491,9 +529,10 @@ class HistoryPage extends StatelessWidget {
     }
   }
 
+    // Fungsi untuk membangun tampilan order dengan format baru
   Widget _buildNewOrderFormat(BuildContext context, DocumentSnapshot order, String status, String transactionId, bool isTemp) {
     List<dynamic> stores = order['stores'] ?? [];
-final data = order.data() as Map<String, dynamic>?;
+    final data = order.data() as Map<String, dynamic>?;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -681,7 +720,7 @@ final data = order.data() as Map<String, dynamic>?;
                       ),
                     ),
                   ),
-if (status == "completed" && (data?['review'] ?? false) != true)
+                if (status == "completed" && (data?['review'] ?? false) != true)
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -754,29 +793,7 @@ if (status == "completed" && (data?['review'] ?? false) != true)
     );
   }
 
-  String _getStatusText(String status) {
-    switch (status) {
-      case "completed":
-        return "Selesai";
-      case "cancel":
-        return "Pembayaran Gagal";
-      case "pending":
-        return "Belum Bayar";
-      case "waiting-store-confirmation":
-        return "Menunggu Konfirmasi Toko";
-      case "is-preparing":
-        return "Pesanan Sedang Dipersiapkan";
-      case "declined-by-store":
-        return "Ditolak oleh Toko";
-      case "in-delivery":
-        return "Dalam Pengiriman";
-      case "completed-delivery":
-        return "Pesanan Terkirim";
-      default:
-        return "Status Tidak Diketahui";
-    }
-  }
-
+  // Fungsi untuk mendapatkan status warna sesuai status pesanan
   Color _getStatusColor(String status) {
     switch (status) {
       case "completed":
@@ -800,6 +817,7 @@ if (status == "completed" && (data?['review'] ?? false) != true)
     }
   }
 
+  // Fungsi untuk mendapatkan warna teks status pesanan
   Color _getStatusTextColor(String status) {
     switch (status) {
       case "completed":
@@ -822,4 +840,29 @@ if (status == "completed" && (data?['review'] ?? false) != true)
         return Colors.black;
     }
   }
+
+  // Fungsi untuk mendapatkan teks status sesuai status pesanan
+  String _getStatusText(String status) {
+    switch (status) {
+      case "completed":
+        return "Selesai";
+      case "cancel":
+        return "Pembayaran Gagal";
+      case "pending":
+        return "Belum Bayar";
+      case "waiting-store-confirmation":
+        return "Menunggu Konfirmasi Toko";
+      case "is-preparing":
+        return "Pesanan Sedang Dipersiapkan";
+      case "declined-by-store":
+        return "Ditolak oleh Toko";
+      case "in-delivery":
+        return "Dalam Pengiriman";
+      case "completed-delivery":
+        return "Pesanan Terkirim";
+      default:
+        return "Status Tidak Diketahui";
+    }
+  }
+
 }
