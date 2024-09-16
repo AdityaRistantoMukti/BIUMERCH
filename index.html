@@ -156,7 +156,7 @@
         <p>Silakan verifikasi captcha untuk melanjutkan.</p>
 
         <!-- reCAPTCHA widget -->
-        <div class="g-recaptcha" data-sitekey="6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p" id="recaptcha"></div>
+        <div class="g-recaptcha" id="recaptcha" data-sitekey="6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p"></div>
 
         <br>
 
@@ -174,17 +174,25 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('loader').style.display = 'block'; // Show loader
+            // Show loader when DOM is loaded
+            document.getElementById('loader').style.display = 'block';
         });
 
-        // Use grecaptcha.ready() to ensure the reCAPTCHA API is ready before calling render
+        // Event listener for CAPTCHA API ready
         grecaptcha.ready(function() {
+            // Render CAPTCHA and hide loader when CAPTCHA is successfully rendered
             grecaptcha.render('recaptcha', {
                 'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
                 'callback': function() {
-                    document.getElementById('loader').style.display = 'none'; // Hide loader once reCAPTCHA is loaded
+                    // Hide loader once CAPTCHA is rendered
+                    document.getElementById('loader').style.display = 'none';
                 }
             });
+
+            // Add a timeout to ensure the loader is hidden even if CAPTCHA render takes time
+            setTimeout(function() {
+                document.getElementById('loader').style.display = 'none';
+            }, 5000); // 5 seconds timeout to ensure loader gets hidden
         });
 
         function submitCaptcha() {
