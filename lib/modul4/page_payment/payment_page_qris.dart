@@ -9,7 +9,6 @@ import 'dart:async';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'cart.dart';
 import '/modul1.2/data/repositories/authentication/authentication_repository.dart';
 
 class PaymentPageQris extends StatefulWidget {
@@ -33,23 +32,27 @@ class PaymentPageQris extends StatefulWidget {
 
 class _PaymentPageQrisState extends State<PaymentPageQris> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+    final FirebaseStorage _storage = FirebaseStorage.instance;
+
 
   String? _qrisUrl;
-  String _authToken = '';
   Timer? _timer;
   String? _refId;
-  int _remainingTime = 0;
   DateTime? _expiryTime;
   Map<String, String> _storeNames = {};
+  bool isExpired = false;
+String? _invoiceNumber; // Store this globally for further access
 
   @override
   void initState() {
     super.initState();
     _fetchStoreNames();
     _generateQris();
-    _startTimer();
     _startPaymentStatusCheck();
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {});
+      _checkExpiry();
+    });
   }
 
   @override
@@ -74,37 +77,42 @@ class _PaymentPageQrisState extends State<PaymentPageQris> {
   }
 
   Future<void> _generateQris() async {
-    try {
-      final response = await http.post(
-        Uri.parse('https://us-central1-long-flash-434811-b9.cloudfunctions.net/qris-api/api/generateQris'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'totalPrice': widget.totalPrice,
-          'ref': DateTime.now().millisecondsSinceEpoch.toString(),
-        }),
-      );
+  try {
+    // Calculate tax (1.3% of totalPrice)
+    final int tax = (widget.totalPrice * 0.013).toInt();
+    final int totalPriceWithTax = widget.totalPrice + tax;
 
-      final responseData = jsonDecode(response.body);
-      if (mounted) {
-        setState(() {
-          _qrisUrl = responseData['rawqr'];
-          _refId = responseData['refid'];
-          _expiryTime = DateTime.now().add(Duration(minutes: 20));
-        });
-      }
+    // Generate QRIS using totalPriceWithTax
+    final response = await http.post(
+      Uri.parse('https://us-central1-long-flash-434811-b9.cloudfunctions.net/qris-api/api/generateQris'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'totalPrice': totalPriceWithTax, // Use totalPriceWithTax for QRIS generation
+        'ref': DateTime.now().millisecondsSinceEpoch.toString(),
+      }),
+    );
 
-      if (_qrisUrl != null) {
-        await _saveQrisToStorage(_qrisUrl!);
-      }
-    } catch (e) {
-      print('Error generating QRIS: $e');
+    final responseData = jsonDecode(response.body);
+    if (mounted) {
+      setState(() {
+        _qrisUrl = responseData['rawqr'];
+        _refId = responseData['refid'];
+        _expiryTime = DateTime.now().add(Duration(seconds: 16)); // Set expiry time for 2 minutes
+      });
     }
-  }
 
-Future<void> _saveQrisToStorage(String qrisUrl) async {
+    if (_qrisUrl != null) {
+      await _saveQrisToStorage(_qrisUrl!, totalPriceWithTax); // Pass totalPriceWithTax to save method
+    }
+  } catch (e) {
+    print('Error generating QRIS: $e');
+  }
+}
+
+ Future<void> _saveQrisToStorage(String qrisUrl, int totalPriceWithTax) async {
   User? user = FirebaseAuth.instance.currentUser;
 
   if (user == null) {
@@ -113,109 +121,120 @@ Future<void> _saveQrisToStorage(String qrisUrl) async {
   }
 
   try {
+    // Generate QR code image and save to temporary storage
     final response = await http.get(Uri.parse(
         'https://api.qrserver.com/v1/create-qr-code/?data=$qrisUrl&size=200x200'));
     final directory = await getTemporaryDirectory();
     final file = File('${directory.path}/$_refId.png');
     await file.writeAsBytes(response.bodyBytes);
 
+    // Upload the QR code image to Firebase Storage
     final storageRef = _storage.ref().child('qris/${_refId}.png');
     final uploadTask = storageRef.putFile(file);
     final snapshot = await uploadTask;
     final downloadUrl = await snapshot.ref.getDownloadURL();
 
-    Map<String, Map<String, dynamic>> storeData = {};
+    // Get the current date for invoice formatting
+    final DateTime now = DateTime.now();
+    final String formattedDate = DateFormat('yyyyMMdd').format(now); // e.g., 20240910
+    final String invoicePrefix = 'BMC-$formattedDate-';
+
+    // Get the number of transactions for the day to create a unique invoice number
+    QuerySnapshot transactionSnapshot = await _firestore
+        .collection('transaction')
+        .where('createdDate', isEqualTo: formattedDate)
+        .get();
+
+    int transactionCount = transactionSnapshot.size + 1;
+    _invoiceNumber = '$invoicePrefix${transactionCount.toString().padLeft(4, '0')}'; // Store globally
+
+    // Preparing store and items for the new structure
+    Map<String, List<Map<String, dynamic>>> storeItems = {};
+    Map<String, dynamic> storeInfo = {};
 
     for (var item in widget.checkedItems) {
       String storeId = item['storeId'];
-      if (storeData[storeId] == null) {
-        storeData[storeId] = {
-          'storeId': storeId,
-          'storeName': _storeNames[storeId],
-          'catatanTambahan': widget.additionalNotes,
-          'items': [],
-        };
-      }
 
-      storeData[storeId]!['items'].add({
-        'productId': item['productId'], // Ensure productId is captured here
+      // Collect product details for each store
+      if (!storeItems.containsKey(storeId)) {
+        storeItems[storeId] = [];
+      }
+      storeItems[storeId]!.add({
+        'productId': item['productId'],
         'productImage': item['productImage'],
         'productName': item['productName'],
+        'category': item['category'],
+        'status': 'waiting-store-confirmation',
         'productPrice': (item['productPrice'] as num).toInt(),
         'selectedOptions': item['selectedOption'] ?? '',
         'quantity': (item['quantity'] as num).toInt(),
         'timestamp': DateTime.now(),
-        'totalHarga': (item['productPrice'] as num).toInt() *
+        'totalPriceProduct': (item['productPrice'] as num).toInt() *
             (item['quantity'] as num).toInt(),
       });
+
+      // Prepare store info for the main document
+      storeInfo[storeId] = {
+        'storeId': storeId,
+        'storeName': _storeNames[storeId],
+      };
     }
 
-    List<Map<String, dynamic>> storeList = storeData.values.toList();
-
-    // Save transaction details under a new document in the 'transaksiTemp' collection
-    DocumentReference transactionRef = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('transaksiTemp')
-        .doc(_refId);
+    // Save the main transaction document with the QR code, store info, and tax
+    DocumentReference transactionRef = _firestore.collection('transaction').doc(_invoiceNumber);
 
     await transactionRef.set({
       'qrisUrl': downloadUrl,
-      'status': 'pending',
       'customerName': widget.customerName,
       'customerPhone': widget.customerPhone,
-      'totalPrice': widget.totalPrice,
-      'stores': storeList,
+      'status': 'pending',
+      'subtotal': widget.totalPrice,
+      'tax': totalPriceWithTax - widget.totalPrice,
+      'totalPriceWithTax': totalPriceWithTax,
+      'stores': storeInfo.values.toList(),
       'timestamp': FieldValue.serverTimestamp(),
       'expiryTime': _expiryTime,
+      'refId': _refId,
+      'createdDate': formattedDate,
+      'userId': user.uid,
     }, SetOptions(merge: true));
 
-    // Save each item as a sub-collection of the transaction document
-    for (var store in storeList) {
-      for (var item in store['items']) {
-        await transactionRef.collection('items').add(item);
-      }
+    // For each store, create a document under the 'items' subcollection with the storeId as the document ID
+    for (var storeId in storeItems.keys) {
+      await transactionRef.collection('items').doc(storeId).set({
+        'products': storeItems[storeId],
+        'timestamp': DateTime.now(),
+        'Subtotal': storeItems[storeId]!
+            .map((item) => item['totalPriceProduct'] as int)
+            .reduce((a, b) => a + b),
+        'catatanTambahan': widget.additionalNotes,
+      });
     }
   } catch (e) {
     print('Error saving QRIS to storage: $e');
   }
 }
 
-
-
 Future<void> _onPaymentSuccess() async {
   User? user = FirebaseAuth.instance.currentUser;
 
-  if (user != null) {
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('transaksiTemp')
-        .doc(_refId)
-        .update({'status': 'waiting-store-confirmation'});
+  if (user != null && _invoiceNumber != null) {
+    try {
+      // Retrieve the document by invoiceNumber (the document ID)
+      DocumentSnapshot transactionDoc = await _firestore.collection('transaction').doc(_invoiceNumber).get();
 
-    var transaksiTempDoc = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('transaksiTemp')
-        .doc(_refId)
-        .get();
+      if (transactionDoc.exists) {
+        // Update the transaction status to 'on-paid'
+        await _firestore.collection('transaction').doc(_invoiceNumber).update({'status': 'on-paid'});
 
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('transaksi')
-        .doc(_refId)
-        .set(transaksiTempDoc.data()!);
-
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('transaksiTemp')
-        .doc(_refId)
-        .delete();
-
-    _showSuccessDialog();
+        // Show success dialog
+        _showSuccessDialog();
+      } else {
+        print('Transaction with invoiceNumber $_invoiceNumber not found');
+      }
+    } catch (e) {
+      print('Error updating document: $e');
+    }
   }
 }
 
@@ -313,49 +332,118 @@ void _showSuccessDialog() {
   );
 }
 
-
-  void _startTimer() {
-    _remainingTime = 20 * 60; // Set timer to 20 minutes in seconds
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
-      if (!mounted) return; // Add this line
-      if (_remainingTime > 0) {
-        setState(() {
-          _remainingTime--;
-        });
-      } else {
-        timer.cancel();
-        await _onPaymentTimeout();
-      }
-    });
-  }
-
-  Future<void> _calculateRemainingTime() async {
+  void _checkExpiry() {
     if (_expiryTime != null) {
-      final currentTime = DateTime.now();
-      final diff = _expiryTime!.difference(currentTime).inSeconds;
+      final now = DateTime.now();
+      final isExpired = now.isAfter(_expiryTime!);
 
-      if (diff > 0 && mounted) {
+      if (isExpired && !this.isExpired) {
         setState(() {
-          _remainingTime = diff;
+          this.isExpired = true;
         });
-      } else {
         _onPaymentTimeout();
       }
     }
   }
 
-  String _formatTime(int seconds) {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  String _formatTimeRemaining() {
+    if (_expiryTime == null) return '00:00';
+
+    final now = DateTime.now();
+    final remaining = _expiryTime!.difference(now);
+
+    if (remaining.isNegative) return '00:00';
+
+    final minutes = remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+
+    return '$minutes:$seconds';
   }
+
+  Future<void> _onPaymentTimeout() async {
+  User? user = FirebaseAuth.instance.currentUser;
+
+  if (user != null && _invoiceNumber != null) {
+    try {
+      // Retrieve the document by invoiceNumber (the document ID)
+      DocumentSnapshot transactionDoc = await _firestore.collection('transaction').doc(_invoiceNumber).get();
+
+      if (transactionDoc.exists) {
+        // Update the transaction status to 'cancel'
+        await _firestore.collection('transaction').doc(_invoiceNumber).update({'status': 'cancel'});
+
+        // Show timeout dialog
+        if (mounted) {
+          showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    color: Colors.redAccent,
+                    size: 28,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Waktu Pembayaran Habis',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Waktu untuk melakukan pembayaran telah habis. Pesanan Anda dibatalkan.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              actionsPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              actions: <Widget>[
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                  ),
+                  child: Text('Oke', style: TextStyle(fontSize: 16)),
+                  onPressed: () {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        print('Transaction with invoiceNumber $_invoiceNumber not found');
+      }
+    } catch (e) {
+      print('Error updating document: $e');
+    }
+  }
+}
 
   void _startPaymentStatusCheck() {
     const int checkInterval = 5; // Interval check setiap 5 detik
     _timer = Timer.periodic(Duration(seconds: checkInterval), (timer) async {
-      if (_remainingTime <= 0) {
+      if (isExpired) {
         timer.cancel();
-        await _onPaymentTimeout();
         return;
       }
 
@@ -393,187 +481,52 @@ void _showSuccessDialog() {
     }
   }
 
-  Future<void> _onPaymentTimeout() async {
-    if (!mounted) return;
-
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksiTemp')
-          .doc(_refId)
-          .update({'status': 'cancel'});
-
-      var transaksiTempDoc = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksiTemp')
-          .doc(_refId)
-          .get();
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksi')
-          .doc(_refId)
-          .set(transaksiTempDoc.data()!);
-
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('transaksiTemp')
-          .doc(_refId)
-          .delete();
-
-      if (mounted) {
-        showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, true); // Return to previous page
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () {
+              Navigator.pop(context, true); // Same as onWillPop
+            },
+          ),
+          title: Text(
+            'Detail Pembayaran',
+            style: TextStyle(
+              color: Color(0xFF000000),
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Nunito',
             ),
-            title: Row(
+          ),
+          backgroundColor: Colors.white,
+          elevation: 1,
+          centerTitle: true,
+        ),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.access_time,
-                  color: Colors.redAccent,
-                  size: 28,
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Waktu Pembayaran Habis',
-                    style: TextStyle(
-                      color: Colors.redAccent,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                _buildTimeRemainingCard(),
+                _buildPaymentMethodCard(),
+                _buildDetailPesananCard(),
+                _buildTotalHargaCard(),
               ],
             ),
-            content: Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Waktu untuk melakukan pembayaran telah habis. Pesanan Anda dibatalkan.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-            actionsPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            actions: <Widget>[
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.redAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                ),
-                child: Text('Oke', style: TextStyle(fontSize: 16)),
-                onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-              ),
-            ],
           ),
-        );
-      }
-    }
-  }
-
-@override
-Widget build(BuildContext context) {
-    return WillPopScope(
-        onWillPop: () async {
-            Navigator.pop(context, true); // Mengirim sinyal ke halaman sebelumnya bahwa kita ingin kembali ke KeranjangPage
-            return false;
-        },
-        child: Scaffold(
-            backgroundColor: Colors.grey.shade100,
-            appBar: AppBar(
-                leading: IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () {
-                        Navigator.pop(context, true); // Sama seperti onWillPop, mengirim sinyal untuk kembali ke KeranjangPage
-                    },
-                ),
-                title: Text(
-                    'Detail Pembayaran',
-                    style: TextStyle(
-                        color: Color(0xFF000000),
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Nunito',
-                    ),
-                ),
-                backgroundColor: Colors.white,
-                elevation: 1,
-                centerTitle: true,
-            ),
-            body: SingleChildScrollView(
-                child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                            _buildTimeRemainingCard(),
-                            _buildPaymentMethodCard(),
-                            _buildDetailPesananCard(),
-                            _buildTotalHargaCard(),
-                        ],
-                    ),
-                ),
-            ),
-        ),
-    );
-}
-
-
-  Widget _buildTimeRemainingCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      color: Colors.white,
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Waktu Tersisa',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Nunito',
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _formatTime(_remainingTime),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Nunito',
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
-
   Widget _buildPaymentMethodCard() {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -798,58 +751,147 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildTotalHargaCard() {
-    final formatCurrency = NumberFormat.currency(
-        locale: 'id_ID', symbol: 'Rp. ', decimalDigits: 0);
+  final formatCurrency = NumberFormat.currency(
+      locale: 'id_ID', symbol: 'Rp. ', decimalDigits: 0);
 
+  // Calculate tax (1.3% of totalPrice)
+  final int tax = (widget.totalPrice * 0.013).toInt();
+  final int totalPriceWithTax = widget.totalPrice + tax;
+
+  return Card(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    color: Colors.white,
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Subtotal
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Subtotal :',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontFamily: 'Nunito',
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
+              ),
+              Text(
+                formatCurrency.format(widget.totalPrice),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  fontFamily: 'Nunito',
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+
+          // Tax (1.3%)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Pajak (1.3%) :',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontFamily: 'Nunito',
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
+              ),
+              Text(
+                formatCurrency.format(tax),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  fontFamily: 'Nunito',
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+
+          // Divider for clarity between subtotal/tax and total
+          Divider(
+            color: Colors.black,
+            thickness: 1.0,
+          ),
+          SizedBox(height: 8),
+
+          // Total Price with Tax
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Harga :',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontFamily: 'Nunito',
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green),
+              ),
+              Text(
+                formatCurrency.format(totalPriceWithTax),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                  fontFamily: 'Nunito',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _buildTimeRemainingCard() {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       color: Colors.white,
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Table(
-              columnWidths: {
-                0: FlexColumnWidth(1),
-                1: FlexColumnWidth(2),
-              },
-              children: [
-                TableRow(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Text(
-                        'Total Harga :',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: 'Nunito',
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatCurrency.format(widget.totalPrice),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                            fontFamily: 'Nunito',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+            Text(
+              'Waktu Tersisa',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Nunito',
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                _formatTimeRemaining(),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Nunito',
                 ),
-              ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  // Other UI-related methods such as _buildPaymentMethodCard, _buildDetailPesananCard, etc.
 }

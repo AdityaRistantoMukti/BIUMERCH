@@ -301,84 +301,181 @@ Widget _buildProductItem(QueryDocumentSnapshot productDoc, int index, List<Query
   );
 }
   Widget _buildTotalPriceWidget(List<QueryDocumentSnapshot> productDocs) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Harga:',
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 18,
-                  ),
+  return Positioned(
+    bottom: 0,
+    left: 0,
+    right: 0,
+    child: Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Harga:',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 18,
                 ),
-                Text(
-            'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(_totalPrice.value)}', // Gunakan _totalPrice.value
-            style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 18,
+              ),
+              Text(
+                'Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(_totalPrice.value)}',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            child: Center(
+              child: Text(
+                'Pesan Sekarang',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF62E703),
+              padding: EdgeInsets.symmetric(vertical: 16, horizontal: 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              minimumSize: Size(200, 50),
+            ),
+            onPressed: () async {
+              var checkedItems = _getCheckedItems(productDocs);
+              bool valid = _validateStoreConsistency(checkedItems);
+
+              if (!valid) {
+                _showValidationDialog(context);
+              } else {
+                await Navigator.push(
+                  context,
+                  _createRoute(CheckoutWidget(
+                    checkedItems: checkedItems,
+                    totalPrice: _totalPrice.value,
+                    additionalNotes: _additionalNotes,
+                  )),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+void _showValidationDialog(BuildContext context) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 300),
+    pageBuilder: (BuildContext buildContext, Animation animation,
+        Animation secondaryAnimation) {
+      return Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.75,
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.info, // Ikon informasi, bisa diganti sesuai keinginan
+                  color: Colors.orange, 
+                  size: 60,
+                ),
+               const SizedBox(height: 16),
+               const Text(
+                  'Mohon Maaf',
+                  style: TextStyle(
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Produk Makanan & Minuman hanya bisa dipesan dari satu toko yang sama.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); 
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    backgroundColor: Colors.green, 
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              child: Center(
-                child: Text(
-                  'Pesan Sekarang',
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF62E703),
-                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                minimumSize: Size(200, 50),
-              ),
-              onPressed: () async {
-                var checkedItems = _getCheckedItems(productDocs);
-                await Navigator.push(
-                  context,
-                  _createRoute(CheckoutWidget(
-      checkedItems: checkedItems,
-      totalPrice: _totalPrice.value, // Gunakan _totalPrice.value
-      additionalNotes: _additionalNotes,
-    )),
-                );
-              },
-            ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOut,
+        ),
+        child: ScaleTransition(
+          scale: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          ),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+
 
   List<Map<String, dynamic>> _getCheckedItems(List<QueryDocumentSnapshot> productDocs) {
     return List.generate(
@@ -423,6 +520,21 @@ Future<Map<String, String>> _getUniqueStores() async {
     }
     return uniqueStores;
   }
+  bool _validateStoreConsistency(List<Map<String, dynamic>> checkedItems) {
+  String? makananMinumanStoreId;
+  
+  for (var item in checkedItems) {
+    if (item['category'] == 'Makanan & Minuman') {
+      if (makananMinumanStoreId == null) {
+        makananMinumanStoreId = item['storeId'];
+      } else if (makananMinumanStoreId != item['storeId']) {
+        return false;
+      }
+    }
+  }
+  
+  return true;  // Return true if all items from "Makanan & Minuman" come from the same store
+}
 void _showFilterDialog() {
   showDialog(
     context: context,

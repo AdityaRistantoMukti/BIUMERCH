@@ -1,8 +1,8 @@
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/modul3/category_page.dart';
 import 'package:biumerch_mobile_app/modul3/landing_page.dart';
-import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
 import 'package:biumerch_mobile_app/modul2/profile_page.dart';
+import 'package:biumerch_mobile_app/modul4/history/history_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:biumerch_mobile_app/modul3/product.dart'; // Import Product dan ProductCard

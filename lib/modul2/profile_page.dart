@@ -21,6 +21,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _profileImageUrl;
   bool _isLoggedIn = false;
   bool _isCaptchaVerified = false;  // Tambahkan status verifikasi captcha
+  
   @override
   void initState() {
     super.initState();
@@ -160,98 +161,77 @@ class _ProfilePageState extends State<ProfilePage> {
             )
           : null,
       body: _isLoggedIn
-          ? Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: _profileImageUrl != null
-                        ? NetworkImage(_profileImageUrl!)
-                        : null,
-                    child: _profileImageUrl == null
-                        ? const Icon(Icons.add_a_photo, size: 50, color: Colors.white)
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _username,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _email,
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  if (_phone.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+          ? SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundImage: _profileImageUrl != null
+                          ? NetworkImage(_profileImageUrl!)
+                          : null,
+                      child: _profileImageUrl == null
+                          ? const Icon(Icons.add_a_photo, size: 50, color: Colors.white)
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      _phone,
+                      _username,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _email,
                       style: const TextStyle(color: Colors.grey),
                     ),
-                  ],
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditProfilePage(
-                            username: _username,
-                            email: _email,
-                            phone: _phone,
-                            profileImageUrl: _profileImageUrl,
+                    if (_phone.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _phone,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditProfilePage(
+                              username: _username,
+                              email: _email,
+                              phone: _phone,  
+                              profileImageUrl: _profileImageUrl,
+                            ),
                           ),
-                        ),
-                      );
-
-                      if (result != null) {
-                        _updateProfile(
-                          result['username'],
-                          result['email'],
-                          result['phone'],
-                          result['profileImageUrl'],
                         );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromRGBO(86, 202, 3, 1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                    ),
-                    child: const Text(
-                      'Edit Profil',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          constraints: const BoxConstraints(minHeight: 100),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.all(8),
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.account_balance_wallet, color: Colors.green),
-                              SizedBox(height: 8),
-                              Text('Saldo Saya', style: TextStyle(color: Colors.green)),
-                              Text('Rp. 0', style: TextStyle(color: Colors.green)),
-                            ],
-                          ),
+
+                        if (result != null) {
+                          _updateProfile(
+                            result['username'],
+                            result['email'],
+                            result['phone'],
+                            result['profileImageUrl'],
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromRGBO(86, 202, 3, 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: InkWell(
-                          onTap: _checkStoreStatus,
+                      child: const Text(
+                        'Edit Profil',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
                           child: Container(
                             constraints: const BoxConstraints(minHeight: 100),
                             decoration: BoxDecoration(
@@ -262,23 +242,44 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: const Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.store, color: Colors.green),
+                                Icon(Icons.account_balance_wallet, color: Colors.green),
                                 SizedBox(height: 8),
-                                Text('Toko Saya', style: TextStyle(color: Colors.green)),
+                                Text('Saldo Saya', style: TextStyle(color: Colors.green)),
+                                Text('Rp. 0', style: TextStyle(color: Colors.green)),
                               ],
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  Expanded(
-                    child: ListView(
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: InkWell(
+                            onTap: _checkStoreStatus,
+                            child: Container(
+                              constraints: const BoxConstraints(minHeight: 100),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.store, color: Colors.green),
+                                  SizedBox(height: 8),
+                                  Text('Toko Saya', style: TextStyle(color: Colors.green)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    ListView(
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-                      children: [                        
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
                         ListTile(
                           leading: const Icon(Icons.receipt),
                           title: const Text(
@@ -298,7 +299,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           onTap: () {
                             Navigator.pushNamed(context, '/chatpage');
                           },
-                        ),                         
+                        ),
                         ListTile(
                           leading: const Icon(Icons.exit_to_app),
                           title: const Text(
@@ -309,8 +310,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             )
           : Center(

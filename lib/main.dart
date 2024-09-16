@@ -11,7 +11,7 @@ import 'package:biumerch_mobile_app/modul2/penjual_toko.dart';
 import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:biumerch_mobile_app/modul2/tokobaru.dart';
 import 'package:biumerch_mobile_app/modul3/listChatPembeli.dart';
-import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
+import 'package:biumerch_mobile_app/modul4/history/history_page.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';

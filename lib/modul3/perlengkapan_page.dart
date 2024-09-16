@@ -1,7 +1,6 @@
 import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/modul3/category_page.dart';
 import 'package:biumerch_mobile_app/modul3/landing_page.dart';
-import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
 import 'package:biumerch_mobile_app/modul2/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -190,11 +189,11 @@ class _HalamanPerlengkapanState extends State<HalamanPerlengkapan> with WidgetsB
                               padding: const EdgeInsets.symmetric(horizontal: 16.0), // Menambahkan padding
                               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                crossAxisSpacing: 2,
-                                mainAxisSpacing: 2,
+                                crossAxisSpacing: 5,
+                                mainAxisSpacing: 5,
                                 childAspectRatio: MediaQuery.of(context).size.width /
-                                  (MediaQuery.of(context).size.height * 0.70),
-                              ),
+                                  (MediaQuery.of(context).size.height * 0.80),
+                            ),
                               itemCount: _filteredProducts.length,
                               itemBuilder: (context, index) {
                                 final product = _filteredProducts[index];

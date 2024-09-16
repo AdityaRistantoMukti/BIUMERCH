@@ -1,4 +1,5 @@
-import 'package:biumerch_mobile_app/modul4/page_payment/history_page.dart';
+
+import 'package:biumerch_mobile_app/modul4/history/history_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'modul3/landing_page.dart';

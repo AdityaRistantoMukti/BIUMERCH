@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'order_box.dart';
 
-class KelolaPesananScreen extends StatelessWidget {
+class KelolaPesananScreen extends StatefulWidget {
   const KelolaPesananScreen({super.key});
 
+  @override
+  _KelolaPesananScreenState createState() => _KelolaPesananScreenState();
+}
+
+class _KelolaPesananScreenState extends State<KelolaPesananScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -10,159 +18,113 @@ class KelolaPesananScreen extends StatelessWidget {
         title: const Text(
           'Kelola Pesanan',
           style: TextStyle(
-            color: Color(0xFF319F43), // Warna hijau
+            color: Colors.black,
+            fontFamily: 'Nunito',
+            fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context); // Kembali ke halaman sebelumnya
+            Navigator.pop(context);
           },
         ),
-        backgroundColor: Colors.white, // Background AppBar putih
+        backgroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: const [
-          OrderBox(
-            imageUrl: 'assets/images/geprek.png',
-            namaBarang: 'Ayam Geprek',
-            namaPemesan: 'Sekar',
-            noTelepon: '+62 812-3456-7890',
-            totalPesanan: 'Rp 200.000',
-            opsi: 'Paha',
-            catatan: 'Tidak Terlalu Pedas',
-            metodePembayaran: 'Bank BCA',
-            jumlahPembayaran: 'Rp 200.000',
-          ),
-          OrderBox(
-            imageUrl: 'assets/images/esteh.jpeg',
-            namaBarang: 'Es Teh',
-            namaPemesan: 'Acep',
-            noTelepon: '+62 811-2345-6789',
-            totalPesanan: 'Rp 150.000',
-            opsi: 'Less Sugar',
-            catatan: 'tidak ada.',
-            metodePembayaran: 'COD',
-            jumlahPembayaran: 'Rp 150.000',
-          ),
-          OrderBox(
-            imageUrl: 'assets/images/katsu.png',
-            namaBarang: 'Ayam Katsu',
-            namaPemesan: 'Melin',
-            noTelepon: '+62 878-7676-3728',
-            totalPesanan: 'Rp 100.000',
-            opsi: 'Dada',
-            catatan: 'Sedang',
-            metodePembayaran: 'Bank BRI',
-            jumlahPembayaran: 'Rp 100.000',
-          ),
-          OrderBox(
-            imageUrl: 'assets/images/senja.jpg',
-            namaBarang: 'Jamu Senja',
-            namaPemesan: 'Sobari',
-            noTelepon: '+62 813-3675-9856',
-            totalPesanan: 'Rp 50.000',
-            opsi: 'Kunyit',
-            catatan: '1 Gelas',
-            metodePembayaran: 'Cash',
-            jumlahPembayaran: 'Rp 50.000',
-          ),
-          // Tambahkan OrderBox lain sesuai kebutuhan
-        ],
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _orderStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Error fetching orders'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('Tidak ada pesanan saat ini'));
+          } else {
+            final orders = snapshot.data!;
+            return ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                return OrderBox(
+                  imageUrl: order['product']['productImage'] ?? '',
+                  namaBarang: order['product']['productName'] ?? 'Unknown Product',
+                  namaPemesan: order['customerName'] ?? 'Unknown Customer',
+                  totalPesanan: order['Subtotal']?.toString() ?? '0',
+                  priceProduct: order['product']['productPrice']?.toString() ?? '0',
+                  quantity: order['product']['quantity']?.toString() ?? '0',
+                  status: order['product']['status'] ?? 'pending',
+                  opsi: order['product']['selectedOptions'] ?? 'N/A',
+                  catatan: order['catatanTambahan'] ?? 'Tidak ada catatan.',
+                  jumlahPembayaran: order['Subtotal']?.toString() ?? '0',
+                  transactionId: order['transactionId'] ?? '',
+                  category: order['product']['category'],
+                  storeId: order['storeId'] ?? '', // Tambahkan storeId
+                );
+              },
+            );
+          }
+        },
       ),
     );
   }
-}
 
-class OrderBox extends StatefulWidget {
-  final String imageUrl;
-  final String namaBarang;
-  final String namaPemesan;
-  final String noTelepon;
-  final String totalPesanan;
-  final String opsi;
-  final String catatan;
-  final String metodePembayaran;
-  final String jumlahPembayaran;
+  Stream<List<Map<String, dynamic>>> _orderStream() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      return FirebaseFirestore.instance
+          .collection('stores')
+          .where('ownerId', isEqualTo: user.uid)
+          .snapshots()
+          .asyncExpand((storeSnapshot) {
+        if (storeSnapshot.docs.isNotEmpty) {
+          String storeId = storeSnapshot.docs.first.id;
+          return FirebaseFirestore.instance
+              .collection('transaction')
+              .where('status', isEqualTo: 'on-paid')
+              .snapshots()
+              .asyncMap((transactionSnapshot) async {
+            List<Map<String, dynamic>> fetchedOrders = [];
 
-  const OrderBox({super.key, 
-    required this.imageUrl,
-    required this.namaBarang,
-    required this.namaPemesan,
-    required this.noTelepon,
-    required this.totalPesanan,
-    required this.opsi,
-    required this.catatan,
-    required this.metodePembayaran,
-    required this.jumlahPembayaran,
-  });
+            for (var transactionDoc in transactionSnapshot.docs) {
+              List stores = transactionDoc['stores'] ?? [];
+              bool storeInTransaction = stores.any((store) => store['storeId'] == storeId);
 
-  @override
-  _OrderBoxState createState() => _OrderBoxState();
-}
+              if (storeInTransaction) {
+                final itemsDoc = await FirebaseFirestore.instance
+                    .collection('transaction')
+                    .doc(transactionDoc.id)
+                    .collection('items')
+                    .doc(storeId)
+                    .get();
 
-class _OrderBoxState extends State<OrderBox> {
-  bool isExpanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      margin: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        children: [
-          ListTile(
-            leading: Image.asset(
-              widget.imageUrl,
-              width: 50,
-              height: 50,
-              fit: BoxFit.cover,
-            ),
-            title: Text(widget.namaBarang),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Pemesan: ${widget.namaPemesan}'),
-                Text('No. Telepon: ${widget.noTelepon}'),
-                Text('Total: ${widget.totalPesanan}'),
-              ],
-            ),
-            trailing: IconButton(
-              icon: Icon(
-                isExpanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                color: Colors.green,
-              ),
-              onPressed: () {
-                setState(() {
-                  isExpanded = !isExpanded;
-                });
-              },
-            ),
-          ),
-          if (isExpanded)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  Text('Opsi: ${widget.opsi}'),
-                  const SizedBox(height: 4),
-                  Text('Catatan: ${widget.catatan}'),
-                  const SizedBox(height: 4),
-                  Text('Metode Pembayaran: ${widget.metodePembayaran}'),
-                  const SizedBox(height: 4),
-                  Text('Jumlah Pembayaran: ${widget.jumlahPembayaran}'),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+                if (itemsDoc.exists) {
+                  Map<String, dynamic> itemData = itemsDoc.data()!;
+                  List<dynamic> products = itemData['products'] ?? [];
+                  
+                  for (var product in products) {
+                    fetchedOrders.add({
+                      'transactionId': transactionDoc.id,
+                      'customerName': transactionDoc['customerName'] ?? 'Unknown',
+                      'timestamp': transactionDoc['timestamp'] ?? 'Unknown',
+                      'product': product,
+                      'storeId': storeId,
+                      ...itemData,
+                    });
+                  }
+                }
+              }
+            }
+            return fetchedOrders;
+          });
+        } else {
+          return const Stream.empty();
+        }
+      });
+    }
+    return const Stream.empty();
   }
 }
