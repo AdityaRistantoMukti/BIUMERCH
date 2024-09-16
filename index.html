@@ -27,16 +27,7 @@
             color: #2c3e50;
             margin-bottom: 20px;
         }
-        /*  .container {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            position: relative;
-        } */
-        
+
         p {
             font-size: 1.2rem;
             color: #34495e;
@@ -62,27 +53,16 @@
         .btn:active {
             background-color: #45a049;
         }
-    
-        /* Loader styling */
-/*         .loader {
-            border: 5px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 5px solid #62E703;
-            width: 40px;
-            height: 40px;
-            animation: spin 2s linear infinite;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none; /* Initially hidden */
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /*  .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            position: relative;
         } */
-
+        
         /* Modal styling */
         .modal {
             display: none;
@@ -148,9 +128,6 @@
 <body>
 
     <div class="container">
-        <!-- Loader -->
-        <div class="loader" id="loader"></div>
-
         <h1>Verifikasi Captcha</h1>
         <p>Silakan verifikasi captcha untuk melanjutkan.</p>
 
@@ -172,26 +149,12 @@
     </div>
 
     <script>
-        // document.addEventListener('DOMContentLoaded', function() {
-        //     // Show loader when DOM is loaded
-        //     document.getElementById('loader').style.display = 'block';
-        // });
-
-        // // Event listener for CAPTCHA API ready
-        // grecaptcha.ready(function() {
-        //     grecaptcha.render('recaptcha', {
-        //         'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
-        //         'callback': function() {
-        //             // Hide loader once reCAPTCHA is rendered
-        //             document.getElementById('loader').style.display = 'none';
-        //         }
-        //     });
-
-        //     // Set a timeout to hide loader after 10 seconds even if CAPTCHA is not rendered
-        //     setTimeout(function() {
-        //         document.getElementById('loader').style.display = 'none';
-        //     }, 10000);  // Timeout after 10 seconds
-        // });
+        // Event listener for CAPTCHA API ready
+        grecaptcha.ready(function() {
+            grecaptcha.render('recaptcha', {
+                'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
+            });
+        });
 
         function submitCaptcha() {
             var response = grecaptcha.getResponse();
