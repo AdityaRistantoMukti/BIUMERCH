@@ -17,12 +17,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-image: url('assets/background1.png');
+            background-image: url('assets/bg.png');
             background-size: cover;
             background-position: center;
         }
 
-        .container {
+/*         .container {
             background-color: rgba(255, 255, 255, 0.9);
             padding: 30px;
             border-radius: 12px;
@@ -30,7 +30,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             max-width: 400px;
             position: relative;
-        }
+        } */
 
         h1 {
             font-size: 2.5rem;
@@ -173,27 +173,22 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Show loader when DOM is loaded
-            document.getElementById('loader').style.display = 'block';
+         document.addEventListener('DOMContentLoaded', function() {
+            // Hide loader when DOM is fully loaded
+            document.getElementById('loader').style.display = 'none';
         });
 
         // Event listener for CAPTCHA API ready
         grecaptcha.ready(function() {
-            // Render CAPTCHA and hide loader when CAPTCHA is successfully rendered
             grecaptcha.render('recaptcha', {
                 'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
                 'callback': function() {
-                    // Hide loader once CAPTCHA is rendered
+                    // Hide loader once reCAPTCHA is rendered
                     document.getElementById('loader').style.display = 'none';
                 }
             });
-
-            // Add a timeout to ensure the loader is hidden even if CAPTCHA render takes time
-            setTimeout(function() {
-                document.getElementById('loader').style.display = 'none';
-            }, 5000); // 5 seconds timeout to ensure loader gets hidden
         });
+            
 
         function submitCaptcha() {
             var response = grecaptcha.getResponse();
