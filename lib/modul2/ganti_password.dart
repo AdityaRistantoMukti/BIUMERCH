@@ -111,6 +111,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // Menyebabkan layout menyesuaikan ketika keyboard muncul
       appBar: AppBar(
         title: const Text('Ganti Password'),
         centerTitle: true,
@@ -123,7 +124,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           Column(
             children: [
               Expanded(
-                child: Padding(
+                child: SingleChildScrollView( // Membuat konten dapat di-scroll
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

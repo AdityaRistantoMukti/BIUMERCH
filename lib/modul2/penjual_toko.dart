@@ -1,3 +1,4 @@
+import 'package:biumerch_mobile_app/bottom_navigation.dart';
 import 'package:biumerch_mobile_app/modul2/Detail_produk.dart';
 import 'package:biumerch_mobile_app/modul2/edit_product_screen.dart';
 import 'package:biumerch_mobile_app/modul2/saldo_pengguna.dart';
@@ -245,11 +246,40 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     });
   }
 
-  void _onItemTapped(int index) {
-    // Add page navigation logic here if needed
-    setState(() {
-      _selectedIndex = index;
-    });
+   void _onItemTapped(int index) {
+    Widget page;
+    switch (index) {
+      case 0:
+        page = BottomNavigation();
+        break;
+      case 1:
+        page = BottomNavigation(selectedIndex: 1);
+        break;
+      case 2:
+        page = BottomNavigation(selectedIndex: 2);
+        break;
+      case 3:
+        page = BottomNavigation(selectedIndex: 3);
+        break;
+      default:
+        page = BottomNavigation();
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final opacityAnimation = animation.drive(
+            CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
+          ).drive(
+            Tween<double>(begin: 0.0, end: 1.0),
+          );
+          return FadeTransition(opacity: opacityAnimation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+      ),
+    );
   }
 
   @override
@@ -605,7 +635,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                             : MediaQuery.of(context).size.width > 600
                                 ? 3 // Jika layar kecil, tampilkan 3 produk per baris
                                 : 2, // Untuk layar lebih kecil, tampilkan 2 produk per baris
-                    childAspectRatio: 0.55,
+                    childAspectRatio: MediaQuery.of(context).size.width /
+                                  (MediaQuery.of(context).size.height * 0.85),                            
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -660,13 +691,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Text(
+                                 Text(
                                     product['name'] ?? '',
                                     style: const TextStyle(
                                       fontSize: 16.0,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis, // Menambahkan ellipsis
+                                    maxLines: 2, // Membatasi hanya 1 baris
                                   ),
                                   const SizedBox(height: 4.0),
                                   Text(
@@ -730,10 +763,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
             ),
         ],
-      ),
-      
-      // Add BottomNavigationBar
-      bottomNavigationBar: BottomNavigationBar(
+      ),     
+       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: SvgPicture.asset(
@@ -772,13 +803,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             label: 'Profil',
           ),
         ],
-        currentIndex: _selectedIndex,
+        currentIndex: _selectedIndex = 3,
         selectedItemColor: Colors.grey[800],
         unselectedItemColor: Colors.grey[400],
         showSelectedLabels: true,
         showUnselectedLabels: true,
-        onTap: _onItemTapped, // Logic to handle tap
-      ),
+        onTap: _onItemTapped,
+      ),       
     );
   }
 }

@@ -72,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
           final recaptchaResult = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => RecaptchaScreen(
+              builder: (context) => RecaptchaHandler(
                 onVerified: (String result) {
                   return result;
                 },
@@ -217,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
         final recaptchaResult = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => RecaptchaScreen(
+            builder: (context) => RecaptchaHandler(
               onVerified: (String result) {
                 return result;
               },

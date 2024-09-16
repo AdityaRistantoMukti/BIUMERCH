@@ -42,7 +42,6 @@ class Product {
       category: data['category'] ?? '',  // Set category dari data Firestore
       storeId: data['storeId'] ?? '', // Ambil Store ID dari Firestore
       id: doc.id,  // Set id dari Firestore document id
-      
     );
   }
 
@@ -55,16 +54,13 @@ class Product {
   }
 }
 
-
 class ProductCard extends StatelessWidget {
   final Product product;
 
-  const ProductCard({super.key, 
-    required this.product,
-  });
+  const ProductCard({super.key, required this.product});
 
-  // SEO 
-    void _trackProductClick(String productId, String category) async {
+  // SEO Tracking for product clicks
+  void _trackProductClick(String productId, String category) async {
     await FirebaseAnalytics.instance.logEvent(
       name: 'product_click',
       parameters: {
@@ -74,7 +70,8 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-    void _saveProductClickToFirestore(String productId, String category) async {
+  // Save product click to Firestore
+  void _saveProductClickToFirestore(String productId, String category) async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       DocumentReference userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
@@ -99,6 +96,7 @@ class ProductCard extends StatelessWidget {
     }
   }
 
+  // Record category visit
   Future<void> _recordCategoryVisit(String category) async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -120,14 +118,15 @@ class ProductCard extends StatelessWidget {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return GestureDetector(
       onTap: () {
-        _recordCategoryVisit(product.category);
+        _recordCategoryVisit(product.category);       
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -136,10 +135,10 @@ class ProductCard extends StatelessWidget {
               title: product.title,
               price: product.price,
               rating: product.rating,
-              description: product.description,              
+              description: product.description,
               category: product.category,
               storeId: product.storeId,
-               productId: product.id, // Pass productId here
+              productId: product.id, // Pass productId here
             ),
           ),
         );
@@ -159,7 +158,7 @@ class ProductCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(  
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Inner card for the image with reduced height
@@ -176,6 +175,22 @@ class ProductCard extends StatelessWidget {
                   height: 160, // Reduced height for a wider card
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Handle image loading error
+                    return Container(
+                      height: 160,
+                      color: Colors.grey[300],
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'Gambar gagal di-load',
+                        style: TextStyle(
+                          color: Color.fromARGB(255, 0, 0, 0),
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -204,7 +219,6 @@ class ProductCard extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
                   const SizedBox(height: 4.0), // Reduce space between text and rating
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
