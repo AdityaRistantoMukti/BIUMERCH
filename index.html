@@ -17,12 +17,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-image: url('assets/background1.png');
+            background-image: url('assets/bg.png');
             background-size: cover;
             background-position: center;
         }
 
-        .container {
+/*         .container {
             background-color: rgba(255, 255, 255, 0.9);
             padding: 30px;
             border-radius: 12px;
@@ -30,7 +30,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             max-width: 400px;
             position: relative;
-        }
+        } */
 
         h1 {
             font-size: 2.5rem;
@@ -76,6 +76,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            display: none; /* Initially hidden */
         }
 
         @keyframes spin {
@@ -172,23 +173,19 @@
     </div>
 
     <script>
-        // Show loader when the page loads
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('loader').style.display = 'block';
+            document.getElementById('loader').style.display = 'block'; // Show loader
         });
 
-        // Hide loader when reCAPTCHA is fully loaded
-        function recaptchaCallback() {
-            document.getElementById('loader').style.display = 'none';
-        }
-
-        // Add reCAPTCHA render with callback to hide loader
-        window.onload = function() {
+        // Use grecaptcha.ready() to ensure the reCAPTCHA API is ready before calling render
+        grecaptcha.ready(function() {
             grecaptcha.render('recaptcha', {
-                'sitekey' : '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
-                'callback' : recaptchaCallback
+                'sitekey': '6LfaDUUqAAAAANpN-Ooj1ULVm5akIC5wABK8nn2p',
+                'callback': function() {
+                    document.getElementById('loader').style.display = 'none'; // Hide loader once reCAPTCHA is loaded
+                }
             });
-        };
+        });
 
         function submitCaptcha() {
             var response = grecaptcha.getResponse();
@@ -213,7 +210,7 @@
             okButton.setAttribute('data-status', status);  // Simpan status ke tombol OK
         }
 
-       function closeModal() {
+        function closeModal() {
             var modal = document.getElementById('customAlert');
             var status = document.getElementById('okButton').getAttribute('data-status');
 
