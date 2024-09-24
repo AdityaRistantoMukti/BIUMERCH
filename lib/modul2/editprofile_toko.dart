@@ -9,6 +9,7 @@ class EditProfileScreen extends StatefulWidget {
   final String email;
   final String phoneNumber;
   String imagePath;
+  final String storeId; // Tambahkan ini untuk menerima storeId
 
   EditProfileScreen({
     super.key,
@@ -16,6 +17,7 @@ class EditProfileScreen extends StatefulWidget {
     required this.email,
     required this.phoneNumber,
     required this.imagePath,
+    required this.storeId, // Inisialisasi storeId
   });
 
   @override
@@ -70,51 +72,110 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfileToFirebase(String storeName, String email, String phoneNumber, String imagePath) async {
     try {
-      await FirebaseFirestore.instance.collection('stores').doc(storeId).update({
+      await FirebaseFirestore.instance.collection('stores').doc(widget.storeId).update({
         'storeName': storeName,
         'email': email,
         'phoneNumber': phoneNumber,
         'storeLogo': imagePath,
       });
+
       print('Data profil toko berhasil disimpan di Firebase.');
     } catch (e) {
       print('Gagal menyimpan data profil toko: $e');
     }
   }
 
+  Future<void> _showSuccessDialog() async {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: Color(0xFF319F43),
+              size: 60,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Profil Berhasil Diperbarui',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();  // Tutup dialog
+              },
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                backgroundColor: const Color(0xFF319F43),
+              ),
+              child: const Text(
+                'OK',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+
+
   Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true; // Mulai loading
-      });
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true; // Mulai loading
+    });
 
-      String? uploadedImagePath = widget.imagePath;
-      if (_imageFile != null) {
-        uploadedImagePath = await _uploadImage(_imageFile!);
-      }
-
-      if (uploadedImagePath != null) {
-        await _saveProfileToFirebase(
-          _namaTokoController.text,
-          _emailController.text,
-          _noHpController.text.isEmpty ? widget.phoneNumber : _noHpController.text,
-          uploadedImagePath,
-        );
-        Navigator.pop(context, {
-          'name': _namaTokoController.text,
-          'email': _emailController.text,
-          'phone': _noHpController.text.isEmpty ? widget.phoneNumber : _noHpController.text,
-          'imagePath': uploadedImagePath,
-        });
-      } else {
-        print('Gagal mengunggah gambar');
-      }
-
-      setState(() {
-        _isLoading = false; // Selesai loading
-      });
+    String? uploadedImagePath = widget.imagePath;
+    if (_imageFile != null) {
+      uploadedImagePath = await _uploadImage(_imageFile!);
     }
+
+    if (uploadedImagePath != null) {
+      await _saveProfileToFirebase(
+        _namaTokoController.text,
+        _emailController.text,
+        _noHpController.text.isEmpty ? widget.phoneNumber : _noHpController.text,
+        uploadedImagePath,
+      );
+
+      // Tampilkan dialog sukses dan tunggu sampai dialog ditutup
+      await _showSuccessDialog();
+
+      // Setelah dialog sukses ditutup, kembali ke halaman sebelumnya
+      Navigator.pop(context, {
+        'name': _namaTokoController.text,
+        'email': _emailController.text,
+        'phone': _noHpController.text.isEmpty ? widget.phoneNumber : _noHpController.text,
+        'imagePath': uploadedImagePath,
+      });
+    } else {
+      print('Gagal mengunggah gambar');
+    }
+
+    setState(() {
+      _isLoading = false; // Selesai loading
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {

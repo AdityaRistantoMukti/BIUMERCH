@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'payment_page_qris.dart';
-import '/modul1.2/data/repositories/authentication/authentication_repository.dart'; // Ganti impor untuk autentikasi
 
 class CheckoutWidget extends StatefulWidget {
   final List<Map<String, dynamic>> checkedItems;
@@ -47,7 +46,8 @@ class _CheckoutWidgetState extends State<CheckoutWidget> {
       _fetchCustomerInfo(); // Mengambil informasi pelanggan jika pengguna sudah login
     } else {
       // Menggunakan AuthenticationRepository untuk mengelola logika logout dan navigasi
-      await AuthenticationRepository.instance.logout();
+      await FirebaseAuth.instance.signOut();
+
     }
   }
 

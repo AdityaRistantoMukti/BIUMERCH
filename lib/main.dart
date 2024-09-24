@@ -1,31 +1,38 @@
-import 'package:biumerch_mobile_app/bottom_navigation.dart';
-import 'package:biumerch_mobile_app/modul1/ForgotPasswordPage.dart';
-import 'package:biumerch_mobile_app/modul1/RegisterPage.dart';
-import 'package:biumerch_mobile_app/modul1/VerificationPage.dart';
-import 'package:biumerch_mobile_app/modul1/VerificationSuccessPage.dart';
-import 'package:biumerch_mobile_app/modul1/WelcomePage.dart';
-import 'package:biumerch_mobile_app/modul2/chat_page.dart';
-import 'package:biumerch_mobile_app/formatif.dart';
-import 'package:biumerch_mobile_app/modul1/login.dart';
-import 'package:biumerch_mobile_app/modul2/penjual_toko.dart';
-import 'package:biumerch_mobile_app/modul2/profile_page.dart';
-import 'package:biumerch_mobile_app/modul2/tokobaru.dart';
-import 'package:biumerch_mobile_app/modul3/listChatPembeli.dart';
-import 'package:biumerch_mobile_app/modul4/history/history_page.dart';
+// Inisialisasi plugin notifikasi lokal
+import 'dart:async';
+import '/bottom_navigation.dart';
+import '/firebase_options.dart';
+import '/formatif.dart';
+import '/modul1/ForgotPasswordPage.dart';
+import '/modul1/RegisterPage.dart';
+import '/modul1/VerificationPage.dart';
+import '/modul1/VerificationSuccessPage.dart';
+import '/modul1/WelcomePage.dart';
+import '/modul1/login.dart';
+import '/modul2/chat_page.dart';
+import '/modul2/features/tarik_saldo/providers/withdrawal_pembeli_provider.dart';
+import '/modul2/features/tarik_saldo/providers/withdrawal_provider.dart';
+import '/modul2/features/tarik_saldo/views/pembeli/tarik_saldo/tarik_saldo_pembeli_screen.dart';
+import '/modul2/features/tarik_saldo/views/pembeli/tarik_saldo_riwayat/tarik_saldo_history_pembeli_view.dart';
+import '/modul2/features/tarik_saldo/views/toko/tarik_saldo/tarik_saldo_screen.dart';
+import '/modul2/features/tarik_saldo/views/toko/tarik_saldo_riwayat/tarik_saldo_history_view.dart';
+import '/modul2/penjual_toko.dart';
+import '/modul2/tokobaru.dart';
+import '/modul3/listChatPembeli.dart';
+import '/modul3/splash_screen.dart';
+import '/modul4/history/history_page.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'firebase_options.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl_standalone.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'modul3/splash_screen.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:uni_links/uni_links.dart'; // Tambahkan untuk Deep Linking
-import 'dart:async'; // Untuk StreamSubscription
-import 'package:flutter/services.dart'; // Untuk platform exceptions
+import 'package:uni_links/uni_links.dart';
 
-// Inisialisasi plugin notifikasi lokal
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
@@ -143,7 +150,7 @@ class _MyAppState extends State<MyApp> {
       home: SplashScreen(), // Tampilkan SplashScreen saat aplikasi diluncurkan
       routes: {
         '/welcome': (context) => WelcomePage(),
-        '/login': (context) => LoginPage(),
+        '/login': (context) => const LoginPage(),
         '/register': (context) => RegisterPage(),
         '/profile': (context) => BottomNavigation(selectedIndex: 3,),
         '/chatpage': (context) => const ChatPage(),
@@ -159,6 +166,10 @@ class _MyAppState extends State<MyApp> {
         '/verification_success': (context) => VerificationSuccessPage(),
         '/forgot_password': (context) => ForgotPasswordPage(),
         '/landing_page': (context) => BottomNavigation(), // Route untuk LandingPage
+        '/tarik_saldo': (context) => const TarikSaldoScreen(),
+        '/tarik_saldo_pembeli': (context) => const TarikSaldoPembeliScreen(),
+        '/tarik_saldo_riwayat': (context) => const TarikSaldoHistoryView(),
+        '/tarik_saldo_riwayat_pembeli': (context) => const TarikSaldoHistoryPembeliView(),
       },
     );
   }
@@ -170,7 +181,14 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Inisialisasi Firebase Analytics
+ try {
+    // Attempt to initialize 'id_ID' locale formatting
+    await initializeDateFormatting('id_ID', null);
+  } catch (e) {
+    print('Error loading locale data for id_ID: $e');
+    // Fallback to default locale or continue without it
+    await initializeDateFormatting(); // Initializes default locale data
+  }  // Inisialisasi Firebase Analytics
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   // Menambahkan handler untuk pesan FCM di background
@@ -204,5 +222,12 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const MyApp());
+
+  runApp(MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => WithdrawalProvider()), // Menambahkan WithdrawalProvider
+        ChangeNotifierProvider(create: (_) => WithdrawalPembeliProvider()), // Menambahkan WithdrawalProvider
+      ],
+      child: const MyApp(),
+    ),);
 }

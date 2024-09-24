@@ -9,7 +9,6 @@ import 'dart:async';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import '/modul1.2/data/repositories/authentication/authentication_repository.dart';
 
 class PaymentPageQris extends StatefulWidget {
   final List<Map<String, dynamic>> checkedItems;
@@ -100,7 +99,8 @@ String? _invoiceNumber; // Store this globally for further access
       setState(() {
         _qrisUrl = responseData['rawqr'];
         _refId = responseData['refid'];
-        _expiryTime = DateTime.now().add(Duration(seconds: 16)); // Set expiry time for 2 minutes
+        _expiryTime = DateTime.now().add(Duration(minutes: 25)); // Set expiry time for 2 minutes
+
       });
     }
 
@@ -116,7 +116,7 @@ String? _invoiceNumber; // Store this globally for further access
   User? user = FirebaseAuth.instance.currentUser;
 
   if (user == null) {
-    AuthenticationRepository.instance.logout();
+      await FirebaseAuth.instance.signOut();
     return;
   }
 
@@ -214,30 +214,66 @@ String? _invoiceNumber; // Store this globally for further access
     print('Error saving QRIS to storage: $e');
   }
 }
-
 Future<void> _onPaymentSuccess() async {
-  User? user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
 
-  if (user != null && _invoiceNumber != null) {
-    try {
-      // Retrieve the document by invoiceNumber (the document ID)
-      DocumentSnapshot transactionDoc = await _firestore.collection('transaction').doc(_invoiceNumber).get();
+    if (user != null && _invoiceNumber != null) {
+      try {
+        // Retrieve the document by invoiceNumber (the document ID)
+        DocumentSnapshot transactionDoc = await _firestore.collection('transaction').doc(_invoiceNumber).get();
 
-      if (transactionDoc.exists) {
-        // Update the transaction status to 'on-paid'
-        await _firestore.collection('transaction').doc(_invoiceNumber).update({'status': 'on-paid'});
+        if (transactionDoc.exists) {
+          // Update the transaction status to 'on-paid'
+          await _firestore.collection('transaction').doc(_invoiceNumber).update({'status': 'on-paid'});
 
-        // Show success dialog
-        _showSuccessDialog();
-      } else {
-        print('Transaction with invoiceNumber $_invoiceNumber not found');
+          // Reduce stock for each product
+          await _reduceProductStock();
+
+          // Show success dialog
+          _showSuccessDialog();
+        } else {
+          print('Transaction with invoiceNumber $_invoiceNumber not found');
+        }
+      } catch (e) {
+        print('Error updating document: $e');
       }
-    } catch (e) {
-      print('Error updating document: $e');
     }
   }
-}
 
+  Future<void> _reduceProductStock() async {
+    for (var item in widget.checkedItems) {
+      String productId = item['productId'];
+      int quantity = item['quantity'];
+
+      try {
+        // Get a reference to the product document in the products collection
+        DocumentReference productRef = _firestore.collection('products').doc(productId);
+
+        // Use a transaction to ensure data consistency
+        await _firestore.runTransaction((transaction) async {
+          DocumentSnapshot productSnapshot = await transaction.get(productRef);
+
+          if (productSnapshot.exists) {
+            Map<String, dynamic> productData = productSnapshot.data() as Map<String, dynamic>;
+            int currentStock = productData['stock'] ?? 0;
+
+            // Check if there's enough stock
+            if (currentStock >= quantity) {
+              // Reduce the stock
+              int newStock = currentStock - quantity;
+              transaction.update(productRef, {'stock': newStock});
+            } else {
+              print('Insufficient stock for product $productId');
+            }
+          } else {
+            print('Product $productId not found');
+          }
+        });
+      } catch (e) {
+        print('Error reducing stock for product $productId: $e');
+      }
+    }
+  }
 void _showSuccessDialog() {
   showGeneralDialog(
     context: context,
@@ -472,11 +508,10 @@ void _showSuccessDialog() {
       if (responseData['status'] == 'success') {
         return true;
       } else {
-        print('Payment not successful');
+
         return false;
       }
     } catch (e) {
-      print('Error checking payment status: $e');
       return false;
     }
   }

@@ -109,6 +109,7 @@ flutter:
     - assets/icons/Kategori/makanan&minuman.svg
     - assets/icons/Kategori/lainnya.svg
     - assets/icons/Kategori/perlengkapan.svg
+    - assets/icons/historyWithdrawal.png
     - assets/banners/banner1.png
     - assets/banners/banner2.jpg
     - assets/banners/banner3.jpeg
@@ -123,6 +124,7 @@ flutter:
     - assets/verfikasisukseslogo.png
     - assets/lupa_pw.png
     - assets/email.png
+    - assets/images/welcome.png
     - assets/web/captchaScreen.html
   # ------------- LOCAL FONTS ------------- #
   fonts:

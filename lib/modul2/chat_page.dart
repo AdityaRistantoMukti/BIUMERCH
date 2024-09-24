@@ -131,14 +131,14 @@ class _ChatPageState extends State<ChatPage> {
               child: InkWell(
                 child: Image.asset('assets/icons/WA.jpg', width: 20, height: 20),
                 onTap: () async {
-                  await launch('https://wa.me/6281292303471');
+                  await launch('https://wa.me/6285158831904');
                 },
               ),
             ),
             InkWell(
               child: const Icon(Icons.email, size: 20),
               onTap: () async {
-                await launch('mailto:acepmictominay@gmail.com');
+                await launch('mailto:pmlbiu@gmail.com');
               },
             ),
           ],

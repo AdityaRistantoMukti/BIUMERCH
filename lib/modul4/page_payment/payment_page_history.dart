@@ -219,13 +219,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         final responseData = jsonDecode(response.body);
         if (responseData['status'] == 'success') {
           return true; // Pembayaran sukses
-        } else {
-          print('Payment not successful');
-          return false;
-        }
+        } 
       }
     } catch (e) {
-      print('Error checking payment status: $e');
     }
     return false;
   }

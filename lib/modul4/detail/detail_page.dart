@@ -1,9 +1,9 @@
- import 'package:flutter/material.dart';
-  import 'package:intl/intl.dart';
-  import 'dart:async';
-  import '../page_payment/payment_page_history.dart';
-  import '../page_payment/ulasan.dart';
-  import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
+import '../page_payment/payment_page_history.dart';
+import '../page_payment/ulasan.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
   class OrderDetailPage extends StatefulWidget {
@@ -43,6 +43,7 @@ import 'package:firebase_auth/firebase_auth.dart';
   String productStatus = '';
   bool hasReview = false;
   double refundAmount = 0.0;  // <-- Declare refundAmount here
+List<Map<String, dynamic>> fetchedProducts = [];
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ import 'package:firebase_auth/firebase_auth.dart';
       });
     });
     _fetchProductStatus();
+    fetchOrderData();
   }
 
   @override
@@ -61,6 +63,72 @@ import 'package:firebase_auth/firebase_auth.dart';
     _timer?.cancel();
     super.dispose();
   }
+Future<void> fetchOrderData() async {
+  try {
+    // Fetch the main transaction document
+    DocumentSnapshot transactionDoc = await FirebaseFirestore.instance
+        .collection('transaction')
+        .doc(widget.orderNumber)
+        .get();
+
+    if (transactionDoc.exists) {
+      Map<String, dynamic>? transactionData = transactionDoc.data() as Map<String, dynamic>?;
+
+      if (transactionData != null) {
+        List<dynamic> stores = transactionData['stores'] ?? [];
+        List<Map<String, dynamic>> tempProducts = []; // Temporarily store products
+
+        for (var store in stores) {
+          String storeId = store['storeId'] ?? '';
+
+          // Fetch items document for the storeId
+          DocumentSnapshot itemsDoc = await FirebaseFirestore.instance
+              .collection('transaction')
+              .doc(widget.orderNumber)
+              .collection('items')
+              .doc(storeId)
+              .get();
+
+          if (itemsDoc.exists) {
+            Map<String, dynamic>? itemsData = itemsDoc.data() as Map<String, dynamic>?;
+
+            if (itemsData != null) {
+              List<dynamic> products = itemsData['products'] ?? [];
+
+              for (var product in products) {
+                String? proofPhotoUrl = product['proofPhotoUrl'];
+                String productName = product['productName'] ?? 'Unknown Product';
+                String status = product['status'] ?? 'Unknown Status';
+
+                // Add each product to the temporary list
+                tempProducts.add({
+                  ...product, // Add existing product fields
+                  'proofPhotoUrl': proofPhotoUrl, // Ensure proofPhotoUrl is added
+                });
+
+                // Log the correct proofPhotoUrl
+                if (proofPhotoUrl != null && proofPhotoUrl.isNotEmpty) {
+                  print("Product Name: $productName");
+                  print("Product Status: $status");
+                  print("Proof Photo URL: $proofPhotoUrl");
+                } else {
+                  print("Proof Photo URL is missing for product: $productName");
+                }
+              }
+            }
+          }
+        }
+
+        // Update state with fetched products
+        setState(() {
+          fetchedProducts = tempProducts;
+        });
+      }
+    }
+  } catch (e) {
+    print("Error fetching Firestore data: $e");
+  }
+}
 
   void _calculateRemainingTime() {
     final now = DateTime.now();
@@ -252,25 +320,37 @@ Widget build(BuildContext context) {
 }
 
 Widget _buildProductDetails() {
+  // Use fetchedProducts for rendering the product details
+  if (fetchedProducts.isEmpty) {
+    return Text('Loading products...'); // Show a loading message if products aren't fetched yet
+  }
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
         'Detail Produk',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black, fontFamily: 'Nunito'),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.black,
+          fontFamily: 'Nunito',
+        ),
       ),
       SizedBox(height: 8),
       Column(
-        children: widget.products.map((product) {
+        children: fetchedProducts.map((product) {
           String formattedPrice = NumberFormat.currency(
             locale: 'id_ID',
             symbol: 'Rp ',
             decimalDigits: 0,
           ).format(product['productPrice']);
+          String? proofPhotoUrl = product['proofPhotoUrl'];
 
           return Card(
             elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Row(
@@ -289,18 +369,47 @@ Widget _buildProductDetails() {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Show "Lihat Bukti Pengiriman" if the product is completed or completed-delivery and proofPhotoUrl exists
+                        if ((product['status'] == 'completed-delivery' || product['status'] == 'completed') && proofPhotoUrl != null) ...[
+                          GestureDetector(
+                            onTap: () {
+                              _showProofPhotoDialog(context, proofPhotoUrl);
+                            },
+                            child: Text(
+                              'Lihat Bukti Pengiriman',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue, // Blue text for link-like appearance
+                                fontFamily: 'Nunito',
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                        ],
+                        // Product name
                         Text(
                           product['productName'] ?? 'Unknown Product',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Nunito'),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Nunito',
+                          ),
                         ),
                         SizedBox(height: 4),
+                        // Product quantity
                         Text(
                           '${product['quantity']} pcs',
-                          style: TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'Nunito'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontFamily: 'Nunito',
+                          ),
                         ),
                         SizedBox(height: 4),
+                        // Product price
                         Text(
-                          formattedPrice, // Harga produk
+                          formattedPrice,
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.green,
@@ -309,7 +418,7 @@ Widget _buildProductDetails() {
                           ),
                         ),
                         SizedBox(height: 4),
-                        // Update status produk yang sesuai
+                        // Product status
                         if (product['status'] == 'canceled-by-user') ...[
                           Text(
                             'Pesanan Dibatalkan',
@@ -364,6 +473,83 @@ Widget _buildProductDetails() {
   );
 }
 
+
+void _showProofPhotoDialog(BuildContext context, String proofPhotoUrl) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                "Bukti Pengiriman",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Nunito',
+                ),
+              ),
+            ),
+            // Display the proof photo
+            Container(
+              width: double.infinity,
+              height: 300,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.grey[200],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  proofPhotoUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Text(
+                        'Gagal memuat gambar',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontFamily: 'Nunito',
+                        ),
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Tutup',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontFamily: 'Nunito',
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
   Widget _buildPaymentSummary(String formattedTotalPrice) {
   // Format subtotal dan pajak
   String formattedSubtotal = NumberFormat.currency(
@@ -470,13 +656,14 @@ Widget _buildProductDetails() {
   );
 }
 
- Widget _buildConditionalButtons(BuildContext context) {
-  // Adjust buttons based on product status
+Widget _buildConditionalButtons(BuildContext context) {
+  // Adjust buttons based on product status and transaction status
   if (productStatus == 'completed-delivery') {
     return _buildConfirmOrderButton(context);
   } else if (productStatus == 'completed' && !hasReview) {
     return _buildReviewButton(context);
-  } else if (productStatus == 'waiting-store-confirmation') {
+  } else if (productStatus == 'waiting-store-confirmation' && widget.transactionStatus == 'on-paid') {
+    // Add transaction status check for 'on-paid'
     return _buildCancelButtonWithRefund(context);
   } else if (widget.transactionStatus == 'pending') {
     return _buildPayButton(context);
@@ -832,7 +1019,7 @@ Future<void> _cancelOrderAndRefund(BuildContext context) async {
     // Reset refundAmount to 0 before calculating
     refundAmount = 0.0;
 
-    // Calculate refund amount based on the totalPriceProduct field in the products array of sub-collection items
+    // Fetch the transaction document
     DocumentSnapshot transactionDoc = await FirebaseFirestore.instance
         .collection('transaction')
         .doc(widget.orderNumber)
@@ -856,16 +1043,14 @@ Future<void> _cancelOrderAndRefund(BuildContext context) async {
 
           for (var product in products) {
             if (product['status'] == 'waiting-store-confirmation') {
-              // Log product details for debugging
-              print('Product Data: ${product.toString()}');
+              // Restore stock for this product in the Firestore 'products' collection
+              await _restoreProductStock(product);
 
-              // Safely cast totalPriceProduct and quantity to double
-              double totalPriceProduct = (product['totalPriceProduct'] ?? 0).toDouble(); // Updated this line
+              // Calculate refund amount
+              double totalPriceProduct = (product['totalPriceProduct'] ?? 0).toDouble();
               double quantity = (product['quantity'] ?? 1).toDouble();
 
-              print('TotalPriceProduct: $totalPriceProduct, Quantity: $quantity');
-
-              refundAmount += totalPriceProduct * quantity; // Calculate refund amount
+              refundAmount += totalPriceProduct * quantity;
               product['status'] = 'canceled-by-user'; // Update product status
             }
           }
@@ -881,26 +1066,16 @@ Future<void> _cancelOrderAndRefund(BuildContext context) async {
       }
     }
 
-    // Log final refundAmount for debugging
-    print('Final Refund Amount: $refundAmount');
 
     // Add refund amount (totalPriceProduct) to user's balance
     double updatedBalance = currentBalance + refundAmount;
 
-    // Log the updated balance for debugging
-    print('Current Balance: $currentBalance');
-    print('Updated Balance: $updatedBalance');
 
     // Update or create the 'balance' field for the user
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid) // Use the current logged-in user's UID
-        .set({'balance': updatedBalance}, SetOptions(merge: true)) // Merges the 'balance' field with existing fields
-        .then((_) {
-          print('Balance updated successfully');
-        }).catchError((error) {
-          print('Error updating balance: $error');
-        });
+        .set({'balance': updatedBalance}, SetOptions(merge: true)); // Merge with existing fields
 
     // Update the transaction status to canceled
     await FirebaseFirestore.instance
@@ -915,6 +1090,34 @@ Future<void> _cancelOrderAndRefund(BuildContext context) async {
     });
   } catch (e) {
     print("Error canceling order and refunding: $e");
+  }
+}
+Future<void> _restoreProductStock(Map<String, dynamic> product) async {
+  try {
+    String productId = product['productId'];
+    int quantity = (product['quantity'] ?? 0).toInt();
+
+    // Get a reference to the product document in Firestore
+    DocumentReference productRef = FirebaseFirestore.instance.collection('products').doc(productId);
+
+    // Run a transaction to restore the stock safely
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot productSnapshot = await transaction.get(productRef);
+
+      if (productSnapshot.exists) {
+        int currentStock = productSnapshot['stock'] ?? 0;
+        int newStock = currentStock + quantity;
+
+        // Update the stock in the product document
+        transaction.update(productRef, {'stock': newStock});
+
+        print('Stock restored for product $productId: New stock is $newStock');
+      } else {
+        print('Product $productId does not exist.');
+      }
+    });
+  } catch (e) {
+    print("Error restoring product stock: $e");
   }
 }
 

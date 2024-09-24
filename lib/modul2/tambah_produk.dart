@@ -409,40 +409,41 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Future<void> _saveForm() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
 
-      _formKey.currentState!.save();
-      final productId = FirebaseFirestore.instance.collection('products').doc().id;
+    _formKey.currentState!.save();
+    final productId = FirebaseFirestore.instance.collection('products').doc().id;
 
-      List<String> imageUrls = [];
-      for (File? image in _images) {
-        if (image != null) {
-          final imageUrl = await _uploadImageAndSaveProduct(image, productId);
-          imageUrls.add(imageUrl);
-        }
+    List<String> imageUrls = [];
+    for (File? image in _images) {
+      if (image != null) {
+        final imageUrl = await _uploadImageAndSaveProduct(image, productId);
+        imageUrls.add(imageUrl);
       }
-
-      Map<String, dynamic> product = {
-        'name': _productName,
-        'price': _priceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-        'stock': _stock,
-        'category': _category,
-        'description': _description,
-        'imageUrls': imageUrls,
-        'storeId': widget.storeId,
-        'rating': '1.0',
-      };
-
-      await FirebaseFirestore.instance.collection('products').doc(productId).set(product);
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      Navigator.pop(context, true);
     }
+
+    // Pastikan _stock dikonversi ke tipe int sebelum disimpan
+    Map<String, dynamic> product = {
+      'name': _productName,
+      'price': _priceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+      'stock': int.parse(_stock), // Mengubah stock menjadi int
+      'category': _category,
+      'description': _description,
+      'imageUrls': imageUrls,
+      'storeId': widget.storeId,
+      'rating': '1.0',
+    };
+
+    await FirebaseFirestore.instance.collection('products').doc(productId).set(product);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    Navigator.pop(context, true);
   }
+}
 }

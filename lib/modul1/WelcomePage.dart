@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-
-
 class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -12,7 +10,8 @@ class WelcomePage extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/welcome.png'),
+
+                image: AssetImage('assets/images/welcome.png'),
                 fit: BoxFit.cover,
               ),
             ),

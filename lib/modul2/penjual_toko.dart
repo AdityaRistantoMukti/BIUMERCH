@@ -1,8 +1,6 @@
-import 'package:biumerch_mobile_app/bottom_navigation.dart';
-import 'package:biumerch_mobile_app/modul2/Detail_produk.dart';
-import 'package:biumerch_mobile_app/modul2/edit_product_screen.dart';
-import 'package:biumerch_mobile_app/modul2/saldo_pengguna.dart';
-import 'package:biumerch_mobile_app/modul3/listChat.dart';
+import '/bottom_navigation.dart';
+import '/modul2/Detail_produk.dart';
+import '/modul3/listChat.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +9,34 @@ import 'tambah_produk.dart';
 import 'kelolapesanan.dart';
 import 'dart:async';
 import 'package:flutter_svg/flutter_svg.dart'; // Import for BottomNavigation icons
+
+Future<int> getTotalPesanan(String storeId) async {
+  try {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('transaction')
+        .where('status', isEqualTo: 'on-paid')
+        .get();
+
+    int totalOrders = 0;
+
+    for (var doc in querySnapshot.docs) {
+      final itemsSnapshot =
+          await doc.reference.collection('items').doc(storeId).get();
+
+      if (itemsSnapshot.exists) {
+        final itemsData = itemsSnapshot.data();
+        if (itemsData != null && itemsData['products'] != null) {
+          totalOrders += (itemsData['products'] as List).length;
+        }
+      }
+    }
+
+    return totalOrders;
+  } catch (e) {
+    print('Error saat mengambil jumlah pesanan: $e');
+    return 0;
+  }
+}
 
 class SellerProfileScreen extends StatefulWidget {
   final String storeId;
@@ -31,47 +57,77 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = false;
   bool _isSearching = false;
   String searchQuery = '';
-  int _selectedIndex = 0; // Add this for BottomNavigationBar state
-
-  final _numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
-
+  int _selectedIndex = 0;
+  int totalPesanan = 0;
+  double? balance;
+  final _numberFormat =
+      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
   @override
   void initState() {
     super.initState();
     _loadProfile();
     _loadProducts();
+    _fetchTotalPesanan();
   }
+
+  // Function to refresh profile data
+  Future<void> _refreshProfile() async {
+    await _loadProfile(); // Call the existing load profile method
+  }
+
+  Future<void> _fetchTotalPesanan() async {
+    final pesanan = await getTotalPesanan(widget.storeId);
+    setState(() {
+      totalPesanan = pesanan;
+    });
+  }
+
+Stream<DocumentSnapshot> _getBalanceStream() {
+  return FirebaseFirestore.instance
+      .collection('stores')
+      .doc(widget.storeId)
+      .snapshots();
+}
 
   Future<void> _loadProfile() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
+  try {
+    setState(() {
+      _isLoading = true;
+    });
 
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('stores').doc(widget.storeId).get();
-      if (doc.exists) {
-        setState(() {
-          storeName = doc['storeName'] ?? 'Nama Toko';
-          email = doc['email'] ?? 'email@contoh.com';
-          phoneNumber = doc['phoneNumber'] ?? '+62 812-3456-7890';
-          imagePath = doc['storeLogo'] ?? 'assets/images/user.jpg';
-        });
-      } else {
-        setState(() {
-          storeName = 'Nama Toko';
-          email = 'email@contoh.com';
-          phoneNumber = '+62 812-3456-7890';
-          imagePath = 'assets/images/user.jpg';
-        });
-      }
-    } catch (e) {
-      print('Gagal memuat profil toko: $e');
-    } finally {
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('stores')
+        .doc(widget.storeId)
+        .get();
+    if (doc.exists) {
       setState(() {
-        _isLoading = false;
+        storeName = doc['storeName'] ?? 'Nama Toko';
+        email = doc['email'] ?? 'email@contoh.com';
+        phoneNumber = doc['phoneNumber'] ?? '+62 812-3456-7890';
+        imagePath = doc['storeLogo'] ?? 'assets/images/user.jpg';
+        // Jika balance tidak ada, set default menjadi 0
+        balance = doc['balance'] != null
+            ? (doc['balance'] as num).toDouble()
+            : 0.0;
+      });
+    } else {
+      setState(() {
+        storeName = 'Nama Toko';
+        email = 'email@contoh.com';
+        phoneNumber = '+62 812-3456-7890';
+        imagePath = 'assets/images/user.jpg';
+        balance = 0.0; // Set balance default jika tidak ada
       });
     }
+  } catch (e) {
+    print('Gagal memuat profil toko: $e');
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
+
 
   Future<void> _saveProfile() async {
     try {
@@ -79,7 +135,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _isLoading = true;
       });
 
-      await FirebaseFirestore.instance.collection('stores').doc(widget.storeId).update({
+      await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(widget.storeId)
+          .update({
         'storeName': storeName,
         'email': email,
         'phoneNumber': phoneNumber,
@@ -94,7 +153,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     }
   }
 
-  void updateProfile(String newName, String newEmail, String newPhone, String newImagePath) {
+
+  void updateProfile(
+      String newName, String newEmail, String newPhone, String newImagePath) {
     setState(() {
       storeName = newName;
       email = newEmail;
@@ -114,14 +175,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           .collection('products')
           .where('storeId', isEqualTo: widget.storeId)
           .get();
-          
+
       final loadedProducts = querySnapshot.docs.map((doc) {
         var data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
-
-      loadedProducts.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+      loadedProducts
+          .sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
 
       setState(() {
         products = List<Map<String, dynamic>>.from(loadedProducts);
@@ -142,7 +203,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     });
 
     try {
-      await FirebaseFirestore.instance.collection('products').doc(productId).delete();
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .delete();
       setState(() {
         products.removeWhere((product) => product['id'] == productId);
       });
@@ -169,7 +233,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(); 
+                  Navigator.of(context).pop();
                 },
                 child: const Text('OK'),
               ),
@@ -199,7 +263,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ProductFormScreen(storeId: widget.storeId, productId: null),
+          builder: (context) =>
+              ProductFormScreen(storeId: widget.storeId, productId: null),
         ),
       );
 
@@ -215,7 +280,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     }
   }
 
-  Future<void> _navigateToDetailProductPage(Map<String, dynamic> product) async {
+  Future<void> _navigateToDetailProductPage(
+      Map<String, dynamic> product) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -246,7 +312,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     });
   }
 
-   void _onItemTapped(int index) {
+  void _onItemTapped(int index) {
     Widget page;
     switch (index) {
       case 0:
@@ -270,14 +336,19 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => page,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final opacityAnimation = animation.drive(
-            CurveTween(curve: Curves.easeInOut), // Menggunakan kurva yang lebih halus
-          ).drive(
-            Tween<double>(begin: 0.0, end: 1.0),
-          );
+          final opacityAnimation = animation
+              .drive(
+                CurveTween(
+                    curve:
+                        Curves.easeInOut), // Menggunakan kurva yang lebih halus
+              )
+              .drive(
+                Tween<double>(begin: 0.0, end: 1.0),
+              );
           return FadeTransition(opacity: opacityAnimation, child: child);
         },
-        transitionDuration: const Duration(milliseconds: 10), // Durasi transisi yang lebih panjang
+        transitionDuration: const Duration(
+            milliseconds: 10), // Durasi transisi yang lebih panjang
       ),
     );
   }
@@ -293,19 +364,28 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                   autofocus: true,
                   decoration: InputDecoration(
                     hintText: 'Cari produk...',
-                    prefixIcon: Icon(Icons.search, color: Colors.black), // Warna ikon pencarian menjadi hitam
-                    contentPadding: EdgeInsets.symmetric(vertical: 10), // Kecilkan padding konten
+                    prefixIcon: Icon(Icons.search,
+                        color:
+                            Colors.black), // Warna ikon pencarian menjadi hitam
+                    contentPadding: EdgeInsets.symmetric(
+                        vertical: 10), // Kecilkan padding konten
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0), // Rounded edge
-                      borderSide: const BorderSide(color: Colors.black, width: 2.0), // Warna border hitam
+                      borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 2.0), // Warna border hitam
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
-                      borderSide: const BorderSide(color: Colors.black, width: 2.0), // Border hitam saat fokus
+                      borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 2.0), // Border hitam saat fokus
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
-                      borderSide: const BorderSide(color: Colors.black, width: 2.0), // Border hitam saat tidak fokus
+                      borderSide: const BorderSide(
+                          color: Colors.black,
+                          width: 2.0), // Border hitam saat tidak fokus
                     ),
                   ),
                   onChanged: (query) => _filterProducts(query),
@@ -340,7 +420,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ),
         ],
       ),
-
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -391,6 +470,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       IconButton(
                         icon: const Icon(Icons.edit, color: Color(0xFF62E703)),
                         onPressed: () async {
+                          // Navigasi ke halaman EditProfileScreen
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -399,18 +479,20 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                                 email: email,
                                 phoneNumber: phoneNumber,
                                 imagePath: imagePath,
+
+                                storeId: widget.storeId,
                               ),
                             ),
                           );
-
-                          if (result != null) {
-                            updateProfile(
-                              result['name'],
-                              result['email'],
-                              result['phone'],
-                              result['imagePath'],
-                            );
-                            _loadProfile();
+                          // Setelah kembali dari halaman EditProfileScreen, cek apakah ada hasil (data yang diperbarui)
+                          if (result != null && result is Map<String, dynamic>) {
+                            // Update data di halaman SellerProfileScreen
+                            setState(() {
+                              storeName = result['name'] ?? storeName;
+                              email = result['email'] ?? email;
+                              phoneNumber = result['phone'] ?? phoneNumber;
+                              imagePath = result['imagePath'] ?? imagePath;
+                            });
                           }
                         },
                       ),
@@ -426,13 +508,81 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         runSpacing: 10,
                         alignment: WrapAlignment.center,
                         children: <Widget>[
-                          // Bagian yang mengubah klik pada "Saldo"
+
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: _getBalanceStream(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData ||
+                                snapshot.connectionState == ConnectionState.waiting) {
+                              return Container(
+                                                          width: boxWidth,
+                                                          padding: const EdgeInsets.all(16.0),
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(0xFFF3F3F3),
+                                                            borderRadius: BorderRadius.circular(10),
+                                                          ),
+                                                          child: const Column(
+                                                            children: [
+                                                              CircularProgressIndicator(),
+                                                            ],
+                                                          ),
+                                                        );
+                            }
+
+                            // Ambil balance dari snapshot dengan default 0 jika balance null
+                            var data = snapshot.data!.data() as Map<String, dynamic>?;
+                            String updatedBalance = _numberFormat.format(
+                              data?['balance'] != null ? (data!['balance'] as num).toDouble() : 0.0
+                            );
+
+                              return InkWell(
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/tarik_saldo');
+                                },
+                                child: Container(
+                                  width: boxWidth,
+                                  padding: const EdgeInsets.all(16.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F3F3),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    children: <Widget>[
+                                      Image.asset(
+                                        'assets/images/saldo.jpg',
+                                        width: 30,
+                                        height: 30,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      const Text(
+                                        'Saldo',
+                                        style: TextStyle(
+                                          color: Color(0xFF0B4D3B),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        updatedBalance,
+                                        style: const TextStyle(
+                                          color: Color(0xFF0B4D3B),
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                           InkWell(
                             onTap: () {
-                              // Navigasi ke halaman saldo
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => TarikSaldoScreen()), // Navigasi ke halaman Tarik Saldo
+                                MaterialPageRoute(
+                                  builder: (context) => KelolaPesananScreen(),
+                                ),
                               );
                             },
                             child: Container(
@@ -445,13 +595,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                               child: Column(
                                 children: <Widget>[
                                   Image.asset(
-                                    'assets/images/saldo.jpg',
+                                    'assets/images/pesanan.jpg',
                                     width: 30,
                                     height: 30,
                                   ),
                                   const SizedBox(height: 10),
                                   const Text(
-                                    'Saldo',
+                                    'Pesanan',
                                     style: TextStyle(
                                       color: Color(0xFF0B4D3B),
                                       fontSize: 15,
@@ -459,9 +609,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 5),
-                                  const Text(
-                                    '0',
-                                    style: TextStyle(
+                                  Text(
+                                    totalPesanan.toString(),
+                                    style: const TextStyle(
                                       color: Color(0xFF0B4D3B),
                                       fontSize: 15,
                                     ),
@@ -470,49 +620,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                               ),
                             ),
                           ),
-
-                          // Bagian ini untuk Pesanan
-                          Container(
-                            width: boxWidth,
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F3F3),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              children: <Widget>[
-                                Image.asset(
-                                  'assets/images/pesanan.jpg',
-                                  width: 30,
-                                  height: 30,
-                                ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'Pesanan',
-                                  style: TextStyle(
-                                    color: Color(0xFF0B4D3B),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                const Text(
-                                  '12',
-                                  style: TextStyle(
-                                    color: Color(0xFF0B4D3B),
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
                           // Bagian untuk Chat
                           InkWell(
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => ListChat(storeId: widget.storeId)),
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        ListChat(storeId: widget.storeId)),
                               );
                             },
                             child: StreamBuilder<QuerySnapshot>(
@@ -599,7 +714,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       );
                     },
                   ),
-
                   const SizedBox(height: 20),
                   Align(
                     alignment: Alignment.center,
@@ -609,7 +723,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         onPressed: _navigateToAddProduct,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF62E703),
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 12.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(5),
                           ),
@@ -625,130 +740,140 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                   ),
                   const SizedBox(height: 20),
                   GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: MediaQuery.of(context).size.width > 1200
-                        ? 6 // Jika layar lebar, tampilkan 6 produk per baris
-                        : MediaQuery.of(context).size.width > 900
-                            ? 4 // Jika layar sedang, tampilkan 4 produk per baris
-                            : MediaQuery.of(context).size.width > 600
-                                ? 3 // Jika layar kecil, tampilkan 3 produk per baris
-                                : 2, // Untuk layar lebih kecil, tampilkan 2 produk per baris
-                    childAspectRatio: MediaQuery.of(context).size.width /
-                                  (MediaQuery.of(context).size.height * 0.85),                            
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemCount: filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    var product = filteredProducts[index];
-                    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: MediaQuery.of(context).size.width > 1200
+                          ? 6 // Jika layar lebar, tampilkan 6 produk per baris
+                          : MediaQuery.of(context).size.width > 900
+                              ? 4 // Jika layar sedang, tampilkan 4 produk per baris
+                              : MediaQuery.of(context).size.width > 600
+                                  ? 3 // Jika layar kecil, tampilkan 3 produk per baris
+                                  : 2, // Untuk layar lebih kecil, tampilkan 2 produk per baris
+                      childAspectRatio: MediaQuery.of(context).size.width /
+                          (MediaQuery.of(context).size.height * 0.85),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: filteredProducts.length,
+                    itemBuilder: (context, index) {
+                      var product = filteredProducts[index];
+                      final formatter = NumberFormat.currency(
+                          locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
-                    return GestureDetector(
-                      onTap: () {
-                        _navigateToDetailProductPage(product);
-                      },
-                      child: Container(
-                        width: 250,
-                        margin: const EdgeInsets.all(7.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15.0),
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.5),
-                              spreadRadius: 2,
-                              blurRadius: 3,
-                              offset: const Offset(0, 7),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Card(
-                              margin: const EdgeInsets.all(8.0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.0),
+                      return GestureDetector(
+                        onTap: () {
+                          _navigateToDetailProductPage(product);
+                        },
+                        child: Container(
+                          width: 250,
+                          margin: const EdgeInsets.all(7.0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15.0),
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.5),
+                                spreadRadius: 2,
+                                blurRadius: 3,
+                                offset: const Offset(0, 7),
                               ),
-                              elevation: 5,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10.0),
-                                child: Image.network(
-                                  product['imageUrls'] != null && product['imageUrls'].isNotEmpty
-                                      ? product['imageUrls'][0]
-                                      : 'https://via.placeholder.com/150',
-                                  height: MediaQuery.of(context).size.height * 0.15,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Card(
+                                margin: const EdgeInsets.all(8.0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                                elevation: 5,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  child: Image.network(
+                                    product['imageUrls'] != null &&
+                                            product['imageUrls'].isNotEmpty
+                                        ? product['imageUrls'][0]
+                                        : 'https://via.placeholder.com/150',
+                                    height: MediaQuery.of(context).size.height *
+                                        0.15,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                 Text(
-                                    product['name'] ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 16.0,
-                                      fontWeight: FontWeight.bold,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 4.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      product['name'] ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow
+                                          .ellipsis, // Menambahkan ellipsis
+                                      maxLines: 2, // Membatasi hanya 1 baris
                                     ),
-                                    textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis, // Menambahkan ellipsis
-                                    maxLines: 2, // Membatasi hanya 1 baris
-                                  ),
-                                  const SizedBox(height: 4.0),
-                                  Text(
-                                    formatter.format(int.parse(product['price'].replaceAll('.', ''))),
-                                    style: TextStyle(
-                                      fontSize: 14.0,
-                                      color: Colors.green[700],
-                                      fontWeight: FontWeight.bold,
+                                    const SizedBox(height: 4.0),
+                                    Text(
+                                      formatter.format(int.parse(
+                                          product['price']
+                                              .replaceAll('.', ''))),
+                                      style: TextStyle(
+                                        fontSize: 14.0,
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
                                     ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF319F43),
-                                      borderRadius: BorderRadius.circular(10.0),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.star,
-                                          color: Colors.yellow[700],
-                                          size: 16.0,
-                                        ),
-                                        const SizedBox(width: 4.0),
-                                        Text(
-                                          product['rating'] != null
-                                              ? product['rating'].toString()
-                                              : '4.2',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
+                                    const SizedBox(height: 8.0),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12.0, vertical: 6.0),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF319F43),
+                                        borderRadius:
+                                            BorderRadius.circular(10.0),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.star,
+                                            color: Colors.yellow[700],
+                                            size: 16.0,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 4.0),
+                                          Text(
+                                            product['rating'] != null
+                                                ? product['rating'].toString()
+                                                : '4.2',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -763,8 +888,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
             ),
         ],
-      ),     
-       bottomNavigationBar: BottomNavigationBar(
+
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: SvgPicture.asset(
@@ -809,7 +936,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         showSelectedLabels: true,
         showUnselectedLabels: true,
         onTap: _onItemTapped,
-      ),       
+      ),
     );
   }
 }
+

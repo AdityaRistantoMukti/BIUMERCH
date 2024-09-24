@@ -6,7 +6,8 @@
   import 'dart:async';
   import '../page_payment/payment_page_history.dart';
   import '../page_payment/ulasan.dart';
-  import '../detail/detail_page.dart'; // Import the new detail page
+  import '../detail/detail_page.dart'; 
+  import '/bottom_navigation.dart';
 
   class OrderItem extends StatefulWidget {
     final DocumentSnapshot order;
@@ -670,113 +671,128 @@ Future<void> _checkAndCancelExpiredTransaction() async {
         children: buttons,
       );
     }
-    Future<void> _showConfirmationDialog(BuildContext context, String transactionId, List<Map<String, dynamic>> completedDeliveryProducts) async {
-    double totalPrice = completedDeliveryProducts.fold(0, (sum, product) => sum + (product['productPrice'] ?? 0) * (product['quantity'] ?? 1));
+      Future<void> _showConfirmationDialog(BuildContext context, String transactionId, List<Map<String, dynamic>> completedDeliveryProducts) async {
+        double totalPrice = completedDeliveryProducts.fold(0, (sum, product) => sum + (product['productPrice'] ?? 0) * (product['quantity'] ?? 1));
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white, // Sesuaikan dengan color palette
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12), // Membuat border dialog lebih halus
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.shopping_cart, // Ikon untuk memperindah tampilan
-                color: Colors.green, // Sesuaikan dengan color palette
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              SizedBox(width: 8),
-              Text(
-                "Konfirmasi Pesanan",
-                style: TextStyle(
-                                  fontSize: 20,
-                  fontFamily: 'Nunito', // Gunakan font yang konsisten dengan aplikasi
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black, // Warna teks utama
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.shopping_cart,
+                    color: Colors.green,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    "Konfirmasi Pesanan",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontFamily: 'Nunito',
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Total yang harus dibayar:",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontFamily: 'Nunito',
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(totalPrice)}",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    "Konfirmasi pesanan dan serahkan jumlah tersebut kepada toko.",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontFamily: 'Nunito',
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.black),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    "Batal",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontFamily: 'Nunito',
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Total yang harus dibayar:",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontFamily: 'Nunito',
-                  color: Colors.black87, // Warna teks utama
+                ElevatedButton(
+                  onPressed: () async {
+                    // Menutup dialog
+                    Navigator.of(context).pop();
+
+                    // Navigasi langsung ke HistoryPage, tanpa menunggu proses async selesai
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BottomNavigation(),
+                      ),
+                    );
+
+                    // Lakukan proses update setelah navigasi, jika berhasil atau gagal tetap navigasi
+                    try {
+                      await _updateProductStatusesAndStoreBalances(transactionId);
+                    } catch (e) {
+                      print("Error: $e"); // Menambahkan log error untuk debugging
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    "Konfirmasi",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontFamily: 'Nunito',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Rp ${NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0).format(totalPrice)}",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green, // Warna hijau untuk jumlah total
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                "Konfirmasi pesanan dan serahkan jumlah tersebut kepada toko.",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontFamily: 'Nunito',
-                  color: Colors.grey[600], // Warna teks deskripsi
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Colors.black), // Border hitam
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                "Batal",
-                style: TextStyle(
-                  color: Colors.black, // Warna teks hitam
-                  fontSize: 14,
-                  fontFamily: 'Nunito',
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _updateProductStatusesAndStoreBalances(transactionId);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, // Warna hijau untuk tombol Konfirmasi
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8), // Membuat tombol lebih halus
-                ),
-              ),
-              child: Text(
-                "Konfirmasi",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontFamily: 'Nunito',
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
-      },
-    );
-  }
+      }
 
 
   Future<void> _updateProductStatusesAndStoreBalances(String transactionId) async {

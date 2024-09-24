@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '/modul1.2/data/repositories/authentication/authentication_repository.dart'; // Ganti impor untuk autentikasi
 import 'checkout_widget.dart';
 import 'package:intl/intl.dart';
 
@@ -51,16 +50,17 @@ class _KeranjangPageState extends State<KeranjangPage> with SingleTickerProvider
     super.dispose();
   }
 
-Future<void> _checkLoginStatus() async {
+  Future<void> _checkLoginStatus() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       setState(() {
         _currentUser = user;
       });
     } else {
-      await AuthenticationRepository.instance.logout();
+      // Replaced logout method with FirebaseAuth signOut
+      await FirebaseAuth.instance.signOut();
     }
-  }
+  } 
 
   @override
   Widget build(BuildContext context) {
